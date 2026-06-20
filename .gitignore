@@ -140,3 +140,6 @@ build*.log
 
 # Private planning docs (not for public repo)
 docs/html/
+
+# Local/server-only tooling — not part of the published add-on
+workstation/
