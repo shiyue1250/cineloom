@@ -64,10 +64,10 @@ Select one in the model dropdown after setting the backend URL in preferences.
 
 ```mermaid
 graph LR
-  subgraph desktop ["Linux desktop (display)"]
+  subgraph desktop["Linux desktop (display)"]
     A["Blender VSE + Cineloom add-on<br/>timeline · subtitles · dubbing<br/>no large GPU needed"]
   end
-  subgraph server ["GPU server (headless)"]
+  subgraph server["GPU server (headless)"]
     B["Cineloom server<br/>diffusers LTX-2.3 + sdnq int8"]
   end
   A -- "POST /v1/videos" --> B

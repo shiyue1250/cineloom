@@ -57,10 +57,10 @@ MoviiGen（提示词改写）。
 
 ```mermaid
 graph LR
-  subgraph desktop ["Linux 桌面（有显示）"]
+  subgraph desktop["Linux 桌面（有显示）"]
     A["Blender VSE + Cineloom 插件<br/>时间线 · 字幕 · 配音<br/>无需大显卡"]
   end
-  subgraph server ["GPU 服务器（无界面）"]
+  subgraph server["GPU 服务器（无界面）"]
     B["Cineloom 服务<br/>diffusers LTX-2.3 + sdnq int8"]
   end
   A -- "POST /v1/videos" --> B
