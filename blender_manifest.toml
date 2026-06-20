@@ -1,0 +1,52 @@
+schema_version = "1.0.0"
+
+# Cineloom — model-agnostic AI film-assembly workbench for the Blender VSE.
+# Forked from tin2tin/Pallaidium (GPL-3.0-or-later). See NOTICE.md.
+id = "cineloom"
+version = "0.1.0"
+name = "Cineloom - AI Film Assembly"
+tagline = "Assemble AI shots into film, Linux-first, remote-capable"
+maintainer = "Cineloom contributors"
+# Supported types: "add-on", "theme"
+type = "add-on"
+
+# Optional link to documentation, support, source files, etc
+website = "https://github.com/shiyue1250/cineloom"
+
+# Optional list defined by Blender and server, see:
+# https://docs.blender.org/manual/en/dev/advanced/extensions/tags.html
+tags = ["Sequencer", "AI", "Media Generation"]
+
+blender_version_min = "3.4.0"
+
+# License conforming to https://spdx.org/licenses/ (use "SPDX:" prefix)
+# Cineloom inherits Pallaidium's GPL-3.0-or-later (copyleft).
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+copyright = [
+  "2023-2026 tintwotin (Pallaidium, upstream)",
+  "2026 Cineloom contributors",
+]
+
+# Cineloom is Linux-first but stays cross-platform; omit `platforms` to allow all.
+
+[permissions]
+network = "Send generation requests to a self-hosted remote backend (OpenAI-compatible /v1) and download HuggingFace weights"
+files = "Read/write generated media (video, image, audio) to and from the project folder"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "/.git/",
+  "/.claude/",
+  "/_upstream/",
+  "/server/",
+  "/scripts/",
+  "/docs/",
+  "/*.zip",
+  "/test*.py",
+]
+location = "Video Sequence Editor > Sidebar > Cineloom"
+description = "Model-agnostic AI film-assembly workbench in the Blender VSE — generate locally or on a remote GPU backend, then edit on a professional timeline."
+category = "Sequencer"
