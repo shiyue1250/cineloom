@@ -12,6 +12,7 @@ register_jobs()/unregister_jobs() from the add-on __init__.
 """
 
 import os
+import json
 import time
 
 import bpy
@@ -29,6 +30,35 @@ def discovery_status():
     return _DISCOVERY
 
 
+def _cache_file():
+    d = bpy.utils.user_resource("CONFIG", path="cineloom", create=True)
+    return os.path.join(d, "discovery.json")
+
+
+def _save_discovery():
+    """Persist the discovered models so the picker survives a restart."""
+    try:
+        with open(_cache_file(), "w", encoding="utf-8") as f:
+            json.dump(_DISCOVERY.get("models", []), f)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _load_discovery():
+    """Load the cached model list on startup so the picker is populated offline."""
+    try:
+        p = _cache_file()
+        if os.path.exists(p):
+            with open(p, encoding="utf-8") as f:
+                models = json.load(f)
+            if isinstance(models, list) and models:
+                _DISCOVERY["models"] = models
+                if _DISCOVERY["ok"] is None:
+                    _DISCOVERY["msg"] = "%d cached model(s) — Test Connection to refresh" % len(models)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _do_discovery():
     """Connect to the configured backend and list its models (GET /v1/models)."""
     from ..models.remote_client import CineloomRemoteClient, RemoteConfig
@@ -41,9 +71,10 @@ def _do_discovery():
         models = client.list_models()
         _DISCOVERY.update(ok=True, msg="Connected — %d model(s)" % len(models),
                           models=models, at=time.time())
+        _save_discovery()
         return True, _DISCOVERY["msg"]
     except Exception as exc:  # noqa: BLE001
-        _DISCOVERY.update(ok=False, msg=str(exc), models=[], at=time.time())
+        _DISCOVERY.update(ok=False, msg=str(exc), at=time.time())
         return False, str(exc)
 
 
@@ -242,8 +273,10 @@ def register_jobs():
         description="Which discovered backend model to use; run Test Connection to populate",
         items=backend_model_items,
     )
+    _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_discovery_tick):
-        bpy.app.timers.register(_discovery_tick, first_interval=300.0, persistent=True)
+        # First run soon after startup (auto-refresh if a URL is set), then hourly-ish.
+        bpy.app.timers.register(_discovery_tick, first_interval=8.0, persistent=True)
 
 
 def unregister_jobs():
