@@ -285,7 +285,7 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
             # Motion-control method: shown for the remote Video model when the
             # input is a strip — a reference video then drives the motion.
             if (type == "movie" and input == "input_strips" and plugin is not None
-                    and str(getattr(plugin, "MODEL_ID", "")) == "cineloom-remote/ltx-2.3"):
+                    and str(getattr(plugin, "MODEL_ID", "")) == "cineloom-remote/video"):
                 col.prop(context.scene, "cineloom_control_type", text="Control")
                 col.label(text="Input = the strip you select in the timeline:", icon="INFO")
                 col.label(text="a video → motion control · an image → image-to-video")

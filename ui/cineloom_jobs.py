@@ -29,7 +29,7 @@ _DISCOVERY = {"ok": None, "msg": "Not tested yet", "models": [], "at": 0.0}
 # modes don't overlap these are hidden from the picker (they'd need dedicated
 # input handling — i2v/flf/storyboard/relay/render/asr — to produce a result).
 _SUPPORTED_MODES = {
-    "video": {"t2v", "i2v", "control"},
+    "video": {"t2v", "i2v", "control", "storyboard", "flf"},
     "image": {"t2i", "i2i"},
     "audio": {"tts"},
     "text": {"chat", "asr"},
@@ -126,6 +126,14 @@ def refresh_after_channel_change():
         _do_discovery()
     except Exception:  # noqa: BLE001
         pass
+
+
+def model_modes(model_id):
+    """Modes of a discovered model id (e.g. {'t2v','control'}), for routing."""
+    for m in _DISCOVERY.get("models", []):
+        if m.get("id") == model_id:
+            return set(m.get("modes") or [])
+    return set()
 
 
 def channel_items(self, context):

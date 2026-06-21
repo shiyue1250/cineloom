@@ -322,7 +322,13 @@ class CineloomRemoteClient:
                 except RemoteBackendError:
                     continue
             if not isinstance(job, dict):
-                raise RemoteBackendError(f"Cannot poll job {rid} at {candidates}")
+                # Transient (e.g. the job isn't queryable for a moment right after
+                # creation) — retry until the deadline rather than giving up.
+                if time.monotonic() > deadline:
+                    raise RemoteBackendError(f"Cannot poll job {rid} at {candidates}")
+                endpoint = None
+                time.sleep(self.cfg.poll_interval)
+                continue
 
             status = str(job.get("status", "")).lower()
             phase = job.get("phase") or status
