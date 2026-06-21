@@ -361,28 +361,32 @@ class CineloomRemoteClient:
     def generate_control(
         self,
         video_path: str,
-        fields: dict,
+        payload: dict,
         dest_path: str,
         *,
         progress_fn: ProgressFn = None,
         phase_fn: PhaseFn = None,
     ) -> str:
-        """IC-LoRA motion control: upload a reference video (multipart) + params
-        to ``/v1/videos/control``, follow the job, download the result.
+        """Motion/structure control per the backend contract: upload the
+        reference via ``POST /v1/files``, then ``POST /v1/videos`` with
+        ``control_file_id`` + ``control_type`` + ``control_strength``, follow the
+        job and download the result.
 
-        ``fields`` are the form fields (prompt, control_strength, width, …).
+        ``payload`` carries the JSON video fields (model, prompt, control_type,
+        control_strength, width, height, num_frames, seed, …); this method adds
+        ``control_file_id``.
         """
         if phase_fn:
             phase_fn("Uploading reference")
         with open(video_path, "rb") as fh:
             content = fh.read()
-        body, ctype = self._multipart(
-            {k: str(v) for k, v in fields.items()},
-            {"file": (os.path.basename(video_path), content)},
-        )
-        result = self._request(
-            "POST", "/v1/videos/control", data=body, content_type=ctype, timeout=180
-        )
+        file_id = self.upload_file(os.path.basename(video_path), content, purpose="control")
+
+        body = dict(payload)
+        body["control_file_id"] = file_id
+        if phase_fn:
+            phase_fn("Submitting")
+        result = self._request("POST", "/v1/videos", json_body=body, timeout=120)
         job_id = result.get("id") or result.get("job_id")
         direct = _extract_url(result) or _extract_file_id(result)
         if job_id and not direct:

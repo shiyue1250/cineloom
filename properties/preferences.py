@@ -230,15 +230,15 @@ class GeneratorAddonPreferences(AddonPreferences):
         subtype="PASSWORD",
         maxlen=1024,
     )
-    cineloom_control_url: StringProperty(
-        name="Control Backend URL",
+    cineloom_video_model: StringProperty(
+        name="Video Model",
         description=(
-            "Base URL of the IC-LoRA motion-control backend (the Cineloom "
-            "control server), e.g. http://your-gpu-host:8881 . Used by the "
-            "'Cineloom Remote · Motion Control' model. Shares the Remote API Key."
+            "Optional: a discovered video model id (from Test Connection) to use "
+            "for remote video / motion-control generation. Leave blank to let the "
+            "backend pick a default."
         ),
         default="",
-        maxlen=1024,
+        maxlen=256,
     )
 
     # --- Async dependency operation state (SKIP_SAVE — reset on restart) ---
@@ -336,7 +336,6 @@ class GeneratorAddonPreferences(AddonPreferences):
         remote_box = layout.box()
         remote_box.label(text="Remote Backend (Cineloom)", icon="URL")
         remote_box.prop(self, "cineloom_remote_url")
-        remote_box.prop(self, "cineloom_control_url")
         remote_box.prop(self, "cineloom_remote_api_key")
         remote_box.operator("cineloom.test_connection", icon="LINKED")
         try:
@@ -349,6 +348,7 @@ class GeneratorAddonPreferences(AddonPreferences):
                 remote_box.label(text="    • %s%s" % (m["id"], t))
         except Exception:  # noqa: BLE001
             pass
+        remote_box.prop(self, "cineloom_video_model")
         remote_box.label(
             text="Pick a 'Cineloom Remote · …' model to generate on the backend.",
             icon="INFO",

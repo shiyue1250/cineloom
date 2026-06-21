@@ -15,7 +15,7 @@ website = "https://github.com/shiyue1250/cineloom"
 
 # Optional list defined by Blender and server, see:
 # https://docs.blender.org/manual/en/dev/advanced/extensions/tags.html
-tags = ["Sequencer", "AI", "Media Generation"]
+tags = ["Sequencer", "Render", "Pipeline"]
 
 blender_version_min = "3.4.0"
 
@@ -32,20 +32,24 @@ copyright = [
 # Cineloom is Linux-first but stays cross-platform; omit `platforms` to allow all.
 
 [permissions]
-network = "Send generation requests to a self-hosted remote backend (OpenAI-compatible /v1) and download HuggingFace weights"
-files = "Read/write generated media (video, image, audio) to and from the project folder"
+network = "Reach your OpenAI-compatible /v1 backend; fetch model weights"
+files = "Read/write generated media in the project folder"
 
 [build]
 paths_exclude_pattern = [
   "__pycache__/",
   "/.git/",
   "/.claude/",
+  "/.ruff_cache/",
   "/_upstream/",
   "/server/",
+  "/workstation/",
   "/scripts/",
   "/docs/",
   "/*.zip",
   "/test*.py",
+  "/.gitignore",
+  "/.gitattributes",
 ]
 location = "Video Sequence Editor > Sidebar > Cineloom"
 description = "Model-agnostic AI film-assembly workbench in the Blender VSE — generate locally or on a remote GPU backend, then edit on a professional timeline."

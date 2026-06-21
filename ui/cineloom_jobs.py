@@ -63,11 +63,7 @@ def _prefs():
 
 def _client():
     from ..models.remote_client import CineloomRemoteClient, RemoteConfig
-    cfg = RemoteConfig.from_prefs(
-        _prefs(), url_attr="cineloom_control_url",
-        env_url="CINELOOM_CONTROL_URL", label="Control Backend URL",
-    )
-    return CineloomRemoteClient(cfg)
+    return CineloomRemoteClient(RemoteConfig.from_prefs(_prefs()))
 
 
 def _media_dir():

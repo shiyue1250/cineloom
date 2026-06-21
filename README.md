@@ -14,7 +14,7 @@ your machine.
 
 English · [中文](README.zh-CN.md)
 
-![Blender 5.2+](https://img.shields.io/badge/Blender-5.2%2B-orange)
+![Blender 4.2+](https://img.shields.io/badge/Blender-4.2%2B-orange)
 ![License GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue)
 ![Any platform](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-supported-5ad571)
 
@@ -41,16 +41,28 @@ Any OpenAI-SDK-compatible backend
 
 ## Install
 
-1. Install Blender 5.2+ on your machine (Windows, macOS or Linux).
-2. Clone this repo and install the add-on:
-   `Edit ▸ Preferences ▸ Add-ons ▸ Install from Disk` → select the repo folder
-   (or build a zip: `blender --command extension build`).
-3. In **Edit ▸ Preferences ▸ Add-ons ▸ Cineloom**, set:
-   - **Remote Backend URL** — e.g. `http://your-backend-host:PORT`
-   - **API Key** — optional, sent as `Bearer` / `X-API-Key` / `?api_key`
+**Install the packaged add-on (recommended):**
 
-The remote add-on code uses only the Python standard library, so no extra
-packages are needed for the bridge to work on any OS.
+1. Install Blender 4.2+ (Windows, macOS or Linux). Tested on Blender 5.1.
+2. Download **`cineloom.zip`** from the
+   [latest release](https://github.com/shiyue1250/cineloom/releases/latest).
+3. In Blender: **`Edit ▸ Preferences ▸ Add-ons`** → the **▾** menu (top-right) →
+   **`Install from Disk…`** → pick `cineloom.zip`.
+4. Make sure **Cineloom** is ticked/enabled in the add-ons list.
+5. Open the **Video Editing** workspace → press **N** for the sidebar → the
+   **Cineloom** tab appears.
+
+**Connect a backend:**
+
+In **`Edit ▸ Preferences ▸ Add-ons ▸ Cineloom`**, set the **Remote Backend URL**
+(and **API Key** if your backend needs one), then click
+**Test Connection & Discover Models** — the backend's models load into the list.
+
+**Run from source (developers):** clone this repo and use `Install from Disk` on
+the repo folder, or `blender --command extension build` to produce the zip.
+
+The bridge code uses only the Python standard library — no extra packages needed
+on any OS.
 
 ## Backend API (the integration format)
 

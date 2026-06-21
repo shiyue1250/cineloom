@@ -3,15 +3,15 @@ Cineloom Remote · Motion Control (IC-LoRA Union-Control)
 ========================================================
 
 Generate a new scene that **follows a reference video's motion and structure**.
-Select a VIDEO strip as the reference; the add-on uploads it to the remote
-control backend, which extracts a control sequence (Canny) and runs LTX-2.3 with
-the IC-LoRA Union-Control adapter. The prompt decides what the new scene looks
-like; the reference decides how the camera/subject moves.
+Select a VIDEO strip as the reference; the add-on uploads it to the backend
+(`POST /v1/files`) and submits `POST /v1/videos` with `control_file_id` +
+`control_type` + `control_strength`. The backend extracts the control sequence
+and generates with structure/motion control. The prompt decides what the new
+scene looks like; the reference decides how the camera/subject moves.
 
 Examples: a real drone canyon clip → a new stylised canyon flythrough that
 follows the same flight path; a dance clip → a different character doing the same
-moves. Points at the *Control Backend URL* in add-on preferences (separate from
-the plain remote backend).
+moves. Uses the main Remote Backend URL — control rides on `/v1/videos`.
 """
 
 from ...models.base import ModelPlugin, InputSpec, UISection, ParamSpec, ModelInputs
@@ -25,8 +25,8 @@ class CineloomRemoteControlPlugin(ModelPlugin):
     MODEL_TYPE   = "video"
     DESCRIPTION  = (
         "Generate a new scene that follows a reference video's motion/structure "
-        "(IC-LoRA Union-Control, remote). Select a video strip as the reference; "
-        "the prompt sets the new look. Set the Control Backend URL in preferences."
+        "(remote, via /v1/videos control). Select a video strip as the reference; "
+        "the prompt sets the new look. Uses the Remote Backend URL in preferences."
     )
 
     INPUTS      = InputSpec.PROMPT | InputSpec.NEG_PROMPT | InputSpec.VIDEO
@@ -45,11 +45,8 @@ class CineloomRemoteControlPlugin(ModelPlugin):
     uses_strip_power     = False
 
     def load(self, prefs, scene, **kwargs):
-        cfg = RemoteConfig.from_prefs(
-            prefs, url_attr="cineloom_control_url",
-            env_url="CINELOOM_CONTROL_URL", label="Control Backend URL",
-        )
-        client = CineloomRemoteClient(cfg)
+        # Control rides on the main backend's /v1/videos — same Remote Backend URL.
+        client = CineloomRemoteClient(RemoteConfig.from_prefs(prefs))
         client.health()
         return client
 
@@ -59,15 +56,19 @@ class CineloomRemoteControlPlugin(ModelPlugin):
                 "Select a VIDEO strip as the motion-control reference, then Generate."
             )
         self.set_phase(inputs, "Preparing request")
-        fields = {
+        payload = {
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt or "blurry, low quality, distorted, watermark, text",
+            "control_type": "canny",        # canny | depth | pose (backend capability)
             "control_strength": float(inputs.strength),
             "width": (inputs.width // 32) * 32,
             "height": (inputs.height // 32) * 32,
             "num_frames": int(inputs.frames),
             "seed": int(inputs.seed),
         }
+        model = (getattr(prefs, "cineloom_video_model", "") or "").strip()
+        if model:
+            payload["model"] = model        # optional: a discovered control-capable model
         dst_path = solve_path(
             clean_filename(f"control_{inputs.seed}_{inputs.prompt}") + ".mp4"
         )
@@ -80,5 +81,5 @@ class CineloomRemoteControlPlugin(ModelPlugin):
                 inputs.progress_fn(done, total)
 
         return client.generate_control(
-            inputs.video_path, fields, dst_path, phase_fn=_phase, progress_fn=_progress
+            inputs.video_path, payload, dst_path, phase_fn=_phase, progress_fn=_progress
         )
