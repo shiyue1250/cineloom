@@ -407,6 +407,10 @@ def register_jobs():
                ("pose", "Pose (OpenPose)", "Follow the reference's body pose")],
         default="canny",
     )
+    bpy.types.Scene.cineloom_flf_first = bpy.props.StringProperty(
+        name="First Frame", subtype="FILE_PATH", description="Image for the first frame")
+    bpy.types.Scene.cineloom_flf_last = bpy.props.StringProperty(
+        name="Last Frame", subtype="FILE_PATH", description="Image for the last frame")
     _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_ensure_channel):
         bpy.app.timers.register(_ensure_channel, first_interval=0.3)
@@ -422,7 +426,8 @@ def unregister_jobs():
     except Exception:  # noqa: BLE001
         pass
     for prop in ("cineloom_jobs", "cineloom_shots", "cineloom_backend_model",
-                 "cineloom_channel", "cineloom_control_type"):
+                 "cineloom_channel", "cineloom_control_type",
+                 "cineloom_flf_first", "cineloom_flf_last"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001

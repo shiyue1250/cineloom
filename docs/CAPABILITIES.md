@@ -12,11 +12,9 @@ compatible backend.
 - [x] Motion / structure control from a reference video — **Canny** (selectable
       Canny / Depth / Pose; depth & pose need backend preprocessors)
 - [x] Continuous long video (segment chaining, seamless)
-- [ ] First/last-frame interpolation (flf) — backend wants `reference_file_id` +
-      `last_frame_file_id`; needs a dual-image picker
-- [ ] Storyboard (multi-shot continuous video) — backend wants
-      `shots:[{prompt, seconds}]` + a first frame, then a create→render→content
-      flow; needs a shot-list editor
+- [x] First/last-frame interpolation (flf) — two image pickers → `reference_file_id`
+      + `last_frame_file_id`
+- [x] Storyboard (multi-shot continuous video) — shot-list editor → `/v1/storyboard`
 - [ ] Subject / identity-conditioned video
 - [ ] Lip-sync
 - [ ] Video super-resolution
