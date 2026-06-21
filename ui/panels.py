@@ -211,6 +211,15 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
             except:
                 pass
 
+            # In-panel backend model picker — choose which discovered model to
+            # generate on, without leaving for Preferences. Shown once connected.
+            try:
+                from .cineloom_jobs import discovery_status
+                if discovery_status().get("models"):
+                    col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
+            except Exception:
+                pass
+
 
         if type != "text":
             if type != "audio":

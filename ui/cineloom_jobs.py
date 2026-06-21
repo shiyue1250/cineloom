@@ -57,6 +57,23 @@ def _discovery_tick():
     return 300.0  # every 5 minutes
 
 
+def backend_model_items(self, context):
+    """EnumProperty items for the in-panel backend-model picker, filtered to the
+    current generation type. ``self`` is the Scene. A module reference to the
+    returned list is kept to avoid Blender's dynamic-enum GC crash."""
+    type_map = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}
+    want = type_map.get(getattr(self, "generatorai_typeselect", "movie"), "")
+    items = [("", "(Backend default)", "Let the backend choose the model")]
+    for m in _DISCOVERY.get("models", []):
+        t = m.get("type", "")
+        if t == want or t == "":
+            mid = m.get("id", "")
+            if mid:
+                items.append((mid, mid, "type: %s" % (t or "?")))
+    backend_model_items._cache = items
+    return items
+
+
 def _prefs():
     return bpy.context.preferences.addons[_ROOT].preferences
 
@@ -220,6 +237,11 @@ def register_jobs():
     for cls in _jobs_classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.cineloom_jobs = bpy.props.CollectionProperty(type=CineloomJobItem)
+    bpy.types.Scene.cineloom_backend_model = bpy.props.EnumProperty(
+        name="Backend Model",
+        description="Which discovered backend model to use; run Test Connection to populate",
+        items=backend_model_items,
+    )
     if not bpy.app.timers.is_registered(_discovery_tick):
         bpy.app.timers.register(_discovery_tick, first_interval=300.0, persistent=True)
 
@@ -230,10 +252,11 @@ def unregister_jobs():
             bpy.app.timers.unregister(_discovery_tick)
     except Exception:  # noqa: BLE001
         pass
-    try:
-        del bpy.types.Scene.cineloom_jobs
-    except Exception:  # noqa: BLE001
-        pass
+    for prop in ("cineloom_jobs", "cineloom_backend_model"):
+        try:
+            delattr(bpy.types.Scene, prop)
+        except Exception:  # noqa: BLE001
+            pass
     for cls in reversed(_jobs_classes):
         try:
             bpy.utils.unregister_class(cls)

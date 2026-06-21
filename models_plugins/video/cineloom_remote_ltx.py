@@ -69,7 +69,7 @@ class CineloomRemoteLTXPlugin(ModelPlugin):
             "strength": float(inputs.strength),
         }
 
-        model = (getattr(prefs, "cineloom_video_model", "") or "").strip()
+        model = (getattr(scene, "cineloom_backend_model", "") or "").strip()
         if model:
             payload["model"] = model
 

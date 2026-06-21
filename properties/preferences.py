@@ -118,24 +118,6 @@ def _hf_cache_dir_update(self, context):
         os.environ["HF_HUB_CACHE"] = cache_dir
 
 
-def _discovered_video_items(self, context):
-    """Items for the Backend Video Model dropdown — the discovered models whose
-    type is video (or unknown). A module-level reference to the returned list is
-    kept to avoid Blender's dynamic-enum garbage-collection crash."""
-    items = [("", "(Backend default)", "Let the backend choose the model")]
-    try:
-        from ..ui.cineloom_jobs import discovery_status
-        for m in discovery_status().get("models", []):
-            if m.get("type") in ("", "video"):
-                mid = m.get("id", "")
-                if mid:
-                    items.append((mid, mid, "type: %s" % (m.get("type") or "?")))
-    except Exception:  # noqa: BLE001
-        pass
-    _discovered_video_items._cache = items
-    return items
-
-
 class GeneratorAddonPreferences(AddonPreferences):
     bl_idname = __package__.rsplit(".", 1)[0]
     soundselect: EnumProperty(
@@ -248,15 +230,6 @@ class GeneratorAddonPreferences(AddonPreferences):
         subtype="PASSWORD",
         maxlen=1024,
     )
-    cineloom_video_model: EnumProperty(
-        name="Backend Video Model",
-        description=(
-            "Which discovered backend model to use for remote video / motion-"
-            "control generation. Run Test Connection first to populate this list; "
-            "leave on '(Backend default)' to let the backend choose."
-        ),
-        items=_discovered_video_items,
-    )
 
     # --- Async dependency operation state (SKIP_SAVE — reset on restart) ---
     dep_is_running:     BoolProperty(default=False,  options={'SKIP_SAVE'})
@@ -365,7 +338,10 @@ class GeneratorAddonPreferences(AddonPreferences):
                 remote_box.label(text="    • %s%s" % (m["id"], t))
         except Exception:  # noqa: BLE001
             pass
-        remote_box.prop(self, "cineloom_video_model")
+        remote_box.label(
+            text="Pick the model in the Cineloom sidebar panel when you generate.",
+            icon="INFO",
+        )
         remote_box.label(
             text="Pick a 'Cineloom Remote · …' model to generate on the backend.",
             icon="INFO",

@@ -66,9 +66,9 @@ class CineloomRemoteControlPlugin(ModelPlugin):
             "num_frames": int(inputs.frames),
             "seed": int(inputs.seed),
         }
-        model = (getattr(prefs, "cineloom_video_model", "") or "").strip()
+        model = (getattr(scene, "cineloom_backend_model", "") or "").strip()
         if model:
-            payload["model"] = model        # optional: a discovered control-capable model
+            payload["model"] = model        # the discovered model picked in the panel
         dst_path = solve_path(
             clean_filename(f"control_{inputs.seed}_{inputs.prompt}") + ".mp4"
         )
