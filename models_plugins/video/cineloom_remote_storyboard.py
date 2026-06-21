@@ -6,8 +6,7 @@ Generate one continuous video from several shots. The main prompt describes the
 opening frame; each shot below has its own prompt and duration. The backend
 chains them into a seamless clip (``POST /v1/storyboard`` → poll → content).
 
-Pick a storyboard-capable backend model in the panel (e.g. ltx-storyboard-msr or
-a sulphur i2v variant).
+Pick a storyboard-capable backend model in the panel.
 """
 
 from ...models.base import ModelPlugin, InputSpec, UISection, ParamSpec, ModelInputs
@@ -22,8 +21,7 @@ class CineloomRemoteStoryboardPlugin(ModelPlugin):
     BACKEND_MODES = {"storyboard", "i2v"}
     DESCRIPTION  = (
         "Continuous multi-shot video. The prompt sets the opening frame; add "
-        "shots below, each with its own prompt and seconds. Pick a storyboard "
-        "model (e.g. ltx-storyboard-msr)."
+        "shots below, each with its own prompt and seconds. Pick a storyboard model."
     )
 
     INPUTS      = InputSpec.PROMPT
