@@ -367,6 +367,10 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    # Cineloom Jobs (remote task-history panel)
+    from .ui.cineloom_jobs import register_jobs as _reg_jobs
+    _reg_jobs()
+
     # Render Queue
     from .operators.queue_ops import RenderQueueJob as _RQJ
     bpy.types.Scene.render_queue = bpy.props.CollectionProperty(type=_RQJ)
@@ -978,6 +982,11 @@ def unregister():
     try:
         if bpy.app.timers.is_registered(_queue_tick):
             bpy.app.timers.unregister(_queue_tick)
+    except Exception:
+        pass
+    try:
+        from .ui.cineloom_jobs import unregister_jobs as _unreg_jobs
+        _unreg_jobs()
     except Exception:
         pass
     for cls in classes:

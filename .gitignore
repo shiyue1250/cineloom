@@ -143,3 +143,6 @@ docs/html/
 
 # Local/server-only tooling — not part of the published add-on
 workstation/
+
+# Self-built reference backend — Cineloom is a plugin; the backend is separate
+server/

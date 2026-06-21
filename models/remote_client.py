@@ -71,23 +71,29 @@ class RemoteConfig:
     job_timeout: int = DEFAULT_JOB_TIMEOUT
 
     @classmethod
-    def from_prefs(cls, prefs: Any) -> "RemoteConfig":
+    def from_prefs(
+        cls,
+        prefs: Any,
+        url_attr: str = "cineloom_remote_url",
+        env_url: str = "CINELOOM_REMOTE_URL",
+        label: str = "Remote Backend URL",
+    ) -> "RemoteConfig":
         """Build config from addon preferences, falling back to env vars.
 
-        Environment fallbacks let the same plugins run headless (CI, the
-        bundled server's smoke tests) without a Blender preferences object.
+        ``url_attr``/``env_url`` let the control plugin point at a different
+        backend (the IC-LoRA control server) via its own preference field.
+        The API key is shared. Environment fallbacks let plugins run headless.
         """
         base = (
-            getattr(prefs, "cineloom_remote_url", "") or ""
-        ).strip() or os.environ.get("CINELOOM_REMOTE_URL", "").strip()
+            getattr(prefs, url_attr, "") or ""
+        ).strip() or os.environ.get(env_url, "").strip()
         key = (
             getattr(prefs, "cineloom_remote_api_key", "") or ""
         ).strip() or os.environ.get("CINELOOM_REMOTE_API_KEY", "").strip()
         if not base:
             raise RemoteBackendError(
-                "Remote backend URL is not set. Open the Cineloom add-on "
-                "preferences and fill in 'Remote Backend URL' (e.g. "
-                "http://your-gpu-host:8879), or set CINELOOM_REMOTE_URL."
+                f"{label} is not set. Open the Cineloom add-on preferences and "
+                f"fill it in (e.g. http://your-gpu-host:8879), or set {env_url}."
             )
         return cls(base_url=base.rstrip("/"), api_key=key)
 
@@ -327,6 +333,42 @@ class CineloomRemoteClient:
         return self._submit_and_collect(
             "/v1/audio/speech", payload, dest_path, **cb
         )
+
+    def generate_control(
+        self,
+        video_path: str,
+        fields: dict,
+        dest_path: str,
+        *,
+        progress_fn: ProgressFn = None,
+        phase_fn: PhaseFn = None,
+    ) -> str:
+        """IC-LoRA motion control: upload a reference video (multipart) + params
+        to ``/v1/videos/control``, follow the job, download the result.
+
+        ``fields`` are the form fields (prompt, control_strength, width, …).
+        """
+        if phase_fn:
+            phase_fn("Uploading reference")
+        with open(video_path, "rb") as fh:
+            content = fh.read()
+        body, ctype = self._multipart(
+            {k: str(v) for k, v in fields.items()},
+            {"file": (os.path.basename(video_path), content)},
+        )
+        result = self._request(
+            "POST", "/v1/videos/control", data=body, content_type=ctype, timeout=180
+        )
+        job_id = result.get("id") or result.get("job_id")
+        direct = _extract_url(result) or _extract_file_id(result)
+        if job_id and not direct:
+            job = self.wait_for_job(job_id, progress_fn=progress_fn, phase_fn=phase_fn)
+            direct = _extract_url(job) or _extract_file_id(job)
+        if not direct:
+            raise RemoteBackendError(f"Control response had no artifact: {result}")
+        if phase_fn:
+            phase_fn("Downloading")
+        return self.download_to(direct, dest_path)
 
     def transcribe(self, filename: str, content: bytes, model: str = "") -> str:
         """ASR: upload audio multipart, return the transcript text."""
