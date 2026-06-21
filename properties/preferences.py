@@ -118,6 +118,24 @@ def _hf_cache_dir_update(self, context):
         os.environ["HF_HUB_CACHE"] = cache_dir
 
 
+def _discovered_video_items(self, context):
+    """Items for the Backend Video Model dropdown — the discovered models whose
+    type is video (or unknown). A module-level reference to the returned list is
+    kept to avoid Blender's dynamic-enum garbage-collection crash."""
+    items = [("", "(Backend default)", "Let the backend choose the model")]
+    try:
+        from ..ui.cineloom_jobs import discovery_status
+        for m in discovery_status().get("models", []):
+            if m.get("type") in ("", "video"):
+                mid = m.get("id", "")
+                if mid:
+                    items.append((mid, mid, "type: %s" % (m.get("type") or "?")))
+    except Exception:  # noqa: BLE001
+        pass
+    _discovered_video_items._cache = items
+    return items
+
+
 class GeneratorAddonPreferences(AddonPreferences):
     bl_idname = __package__.rsplit(".", 1)[0]
     soundselect: EnumProperty(
@@ -230,15 +248,14 @@ class GeneratorAddonPreferences(AddonPreferences):
         subtype="PASSWORD",
         maxlen=1024,
     )
-    cineloom_video_model: StringProperty(
-        name="Video Model",
+    cineloom_video_model: EnumProperty(
+        name="Backend Video Model",
         description=(
-            "Optional: a discovered video model id (from Test Connection) to use "
-            "for remote video / motion-control generation. Leave blank to let the "
-            "backend pick a default."
+            "Which discovered backend model to use for remote video / motion-"
+            "control generation. Run Test Connection first to populate this list; "
+            "leave on '(Backend default)' to let the backend choose."
         ),
-        default="",
-        maxlen=256,
+        items=_discovered_video_items,
     )
 
     # --- Async dependency operation state (SKIP_SAVE — reset on restart) ---

@@ -22,6 +22,8 @@ _ZH = {
     (_C, "Test Connection & Discover Models"): "测试连接并发现模型",
     (_C, "Control Backend URL"): "控制后端地址",
     (_C, "Video Model"): "视频模型",
+    (_C, "Backend Video Model"): "后端视频模型",
+    (_C, "(Backend default)"): "（后端默认）",
     (_C, "Image Model"): "图像模型",
     (_C, "Audio Model"): "音频模型",
     (_C, "Text Model"): "文本模型",

@@ -54,8 +54,9 @@ class CineloomRemoteLTXPlugin(ModelPlugin):
     def generate(self, client: CineloomRemoteClient, inputs: ModelInputs, scene, prefs) -> str:
         self.set_phase(inputs, "Preparing request")
 
+        # Use the backend model chosen in preferences (populated by Test
+        # Connection); omit it entirely so the backend defaults when unset.
         payload = {
-            "model": "ltx-2.3",
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt,
             "width": (inputs.width // 32) * 32,
@@ -67,6 +68,10 @@ class CineloomRemoteLTXPlugin(ModelPlugin):
             "seed": int(inputs.seed),
             "strength": float(inputs.strength),
         }
+
+        model = (getattr(prefs, "cineloom_video_model", "") or "").strip()
+        if model:
+            payload["model"] = model
 
         # First-frame condition (img2vid). Encode inline as base64 PNG so the
         # whole job is one request; the server decodes image_b64.
