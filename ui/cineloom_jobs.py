@@ -88,6 +88,23 @@ def _discovery_tick():
     return 300.0  # every 5 minutes
 
 
+def _ensure_channel():
+    """Guarantee at least one channel so the Channel picker always shows. Seeds
+    the first one from any legacy single-backend URL/key. One-shot (channels
+    persist in addon prefs)."""
+    try:
+        p = _prefs()
+        if not len(p.cineloom_channels):
+            ch = p.cineloom_channels.add()
+            ch.name = "Backend 1"
+            ch.url = (getattr(p, "cineloom_remote_url", "") or "").strip()
+            ch.api_key = getattr(p, "cineloom_remote_api_key", "") or ""
+            p.cineloom_active_channel = 0
+    except Exception:  # noqa: BLE001
+        pass
+    return None  # run once
+
+
 def refresh_after_channel_change():
     """Channel switched → drop the old models and re-discover the new backend."""
     global _loaded_from_cache
@@ -320,6 +337,8 @@ def register_jobs():
         items=channel_items, get=_chan_get, set=_chan_set,
     )
     _load_discovery()   # populate the picker from cache immediately
+    if not bpy.app.timers.is_registered(_ensure_channel):
+        bpy.app.timers.register(_ensure_channel, first_interval=0.3)
     if not bpy.app.timers.is_registered(_discovery_tick):
         # First run soon after startup (auto-refresh if a URL is set), then hourly-ish.
         bpy.app.timers.register(_discovery_tick, first_interval=8.0, persistent=True)
