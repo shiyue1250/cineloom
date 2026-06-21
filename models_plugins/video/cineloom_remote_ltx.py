@@ -140,7 +140,7 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
 
         # Per the backend's /v1/videos schema: frame count is `length` (8n+1);
         # width/height apply to t2v only (i2v follows the source image); the
-        # sulphur pipeline has no steps/guidance knobs.
+        # backend video pipeline has no steps/guidance knobs.
         base = {
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt or "blurry, low quality, distorted, watermark, text",
