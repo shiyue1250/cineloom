@@ -138,15 +138,16 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
                 payload["model"] = model
             return client.generate_storyboard(payload, dst_path, phase_fn=_phase, progress_fn=_progress)
 
+        # Per the backend's /v1/videos schema: frame count is `length` (8n+1);
+        # width/height apply to t2v only (i2v follows the source image); the
+        # sulphur pipeline has no steps/guidance knobs.
         base = {
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt or "blurry, low quality, distorted, watermark, text",
             "width": (inputs.width // 32) * 32,
             "height": (inputs.height // 32) * 32,
-            "num_frames": int(inputs.frames),
+            "length": int(inputs.frames),
             "fps": float(inputs.fps) if inputs.fps else 24.0,
-            "num_inference_steps": int(inputs.steps) or 8,
-            "guidance_scale": float(inputs.guidance) or 1.0,
             "seed": int(inputs.seed),
         }
         if model:

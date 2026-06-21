@@ -41,13 +41,13 @@ class CineloomRemoteImagePlugin(ModelPlugin):
 
     def generate(self, client: CineloomRemoteClient, inputs: ModelInputs, scene, prefs):
         self.set_phase(inputs, "Preparing request")
+        # Per the backend's /v1/images/generations schema: dimensions are one
+        # `size` field ("WxH"); negative_prompt + seed are extensions; there are
+        # no steps/guidance knobs.
         payload = {
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt,
-            "width": int(inputs.width),
-            "height": int(inputs.height),
-            "num_inference_steps": int(inputs.steps),
-            "guidance_scale": float(inputs.guidance),
+            "size": "%dx%d" % (int(inputs.width), int(inputs.height)),
             "seed": int(inputs.seed),
         }
         model = (getattr(scene, "cineloom_backend_model", "") or "").strip()

@@ -59,7 +59,7 @@ class CineloomRemoteTTSPlugin(ModelPlugin):
                     ref_id = client.upload_file(
                         "speaker_ref.wav", fh.read(), purpose="speaker_reference"
                     )
-                payload["speaker_reference_id"] = ref_id
+                payload["reference_file_id"] = ref_id
             except OSError:
                 pass
 
