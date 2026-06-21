@@ -209,6 +209,17 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
         _card = {"movie": movie_model_card, "image": image_model_card,
                  "audio": audio_model_card, "text": text_model_card}.get(type, "")
         plugin = _reg_get_plugin(_card)
+        if plugin is None:
+            # The engine card can hold a stale value; fall back to the single
+            # remote plugin for this type so its adaptive UI still renders.
+            try:
+                from ..models import get_enum_items as _gei
+                _mt = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}.get(type)
+                _remote = [it[0] for it in _gei(_mt) if str(it[0]).startswith("cineloom-remote/")]
+                if _remote:
+                    plugin = _reg_get_plugin(_remote[0])
+            except Exception:
+                pass
         def _has(sec): return plugin is None or sec in (plugin.UI_SECTIONS or [])
 
         # --- Channel -> Type -> Model, at the TOP (pick what to make first) ---

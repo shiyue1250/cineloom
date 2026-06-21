@@ -115,6 +115,25 @@ def _ensure_channel():
     return None  # run once
 
 
+def _ensure_model_cards():
+    """The engine picker is hidden (one remote plugin per type), but its enum can
+    keep a stale index that resolves to nothing. Point each model card at its
+    single remote plugin so the panel resolves the plugin (and its adaptive UI)."""
+    try:
+        from ..models import get_plugin, get_enum_items
+        p = _prefs()
+        for card, mt in (("movie_model_card", "video"), ("image_model_card", "image"),
+                         ("audio_model_card", "audio"), ("text_model_card", "text")):
+            if get_plugin(getattr(p, card, "")) is None:
+                remote = [it[0] for it in get_enum_items(mt)
+                          if str(it[0]).startswith("cineloom-remote/")]
+                if remote:
+                    setattr(p, card, remote[0])
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def refresh_after_channel_change():
     """Channel switched → drop the old models and re-discover the new backend."""
     global _loaded_from_cache
@@ -422,6 +441,8 @@ def register_jobs():
     _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_ensure_channel):
         bpy.app.timers.register(_ensure_channel, first_interval=0.3)
+    if not bpy.app.timers.is_registered(_ensure_model_cards):
+        bpy.app.timers.register(_ensure_model_cards, first_interval=0.4)
     if not bpy.app.timers.is_registered(_discovery_tick):
         # First run soon after startup (auto-refresh if a URL is set), then hourly-ish.
         bpy.app.timers.register(_discovery_tick, first_interval=8.0, persistent=True)
