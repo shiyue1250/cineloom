@@ -34,10 +34,11 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
         "GPU needed; set the URL in preferences and pick the Backend Model."
     )
 
-    # A reference video is optional: present → motion control, absent → text2video.
-    INPUTS      = InputSpec.PROMPT | InputSpec.NEG_PROMPT | InputSpec.VIDEO
+    # Inputs are optional and select the mode: a reference video → motion
+    # control; a source image → image2video; neither → text2video.
+    INPUTS      = InputSpec.PROMPT | InputSpec.NEG_PROMPT | InputSpec.VIDEO | InputSpec.IMAGE
     UI_SECTIONS = [
-        UISection.PROMPT, UISection.NEG_PROMPT, UISection.VIDEO_STRIP,
+        UISection.PROMPT, UISection.NEG_PROMPT, UISection.VIDEO_STRIP, UISection.IMAGE_STRIP,
         UISection.RESOLUTION, UISection.FRAMES, UISection.STEPS, UISection.SEED,
     ]
     PARAMS = ParamSpec(width=768, height=1280, frames=121, steps=8, guidance=1.0, strength=1.0)
@@ -87,7 +88,18 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
                 inputs.video_path, payload, dst_path, phase_fn=_phase, progress_fn=_progress
             )
 
-        # Otherwise plain text → video.
+        # A source image → image2video. The backend wants the image uploaded as
+        # a reference file (reference_file_id), not inlined.
+        if inputs.image is not None:
+            import os
+            import tempfile
+            from io import BytesIO
+            _phase("Uploading source image")
+            buf = BytesIO()
+            inputs.image.convert("RGB").save(buf, format="PNG")
+            fid = client.upload_file("source.png", buf.getvalue(), purpose="reference")
+            payload["reference_file_id"] = fid
+
         return client.generate_video(
             payload, dst_path, phase_fn=_phase, progress_fn=_progress
         )

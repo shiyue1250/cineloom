@@ -448,6 +448,15 @@ class CineloomRemoteClient:
             progress_fn=progress_fn, phase_fn=phase_fn,
         )
 
+    def chat(self, payload: dict) -> str:
+        """Text generation via ``POST /v1/chat/completions`` (OpenAI format).
+        Returns the assistant message text."""
+        result = self._request("POST", "/v1/chat/completions", json_body=payload, timeout=120)
+        try:
+            return result["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RemoteBackendError(f"Unexpected chat response: {result}") from exc
+
     def transcribe(self, filename: str, content: bytes, model: str = "") -> str:
         """ASR: upload audio multipart, return the transcript text."""
         fields = {"model": model} if model else {}

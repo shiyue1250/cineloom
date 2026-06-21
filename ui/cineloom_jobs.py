@@ -29,10 +29,10 @@ _DISCOVERY = {"ok": None, "msg": "Not tested yet", "models": [], "at": 0.0}
 # modes don't overlap these are hidden from the picker (they'd need dedicated
 # input handling — i2v/flf/storyboard/relay/render/asr — to produce a result).
 _SUPPORTED_MODES = {
-    "video": {"t2v"},
+    "video": {"t2v", "i2v", "control"},
     "image": {"t2i", "i2i"},
     "audio": {"tts"},
-    "text": set(),
+    "text": {"chat", "asr"},
 }
 
 

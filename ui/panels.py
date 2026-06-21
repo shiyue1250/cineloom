@@ -235,9 +235,18 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
             pass
         _card_attr = {"movie": "movie_model_card", "image": "image_model_card",
                       "audio": "audio_model_card", "text": "text_model_card"}.get(type)
-        # The engine/plugin picker is only meaningful with local models shown;
-        # otherwise there is a single Cineloom Remote engine per type, so hide it.
-        if _card_attr and getattr(addon_prefs, "cineloom_show_local_models", False):
+        # Show the engine/plugin picker when local models are enabled, or when
+        # several remote engines exist for this type (e.g. text = chat + ASR).
+        _show_engine = getattr(addon_prefs, "cineloom_show_local_models", False)
+        if not _show_engine and _card_attr:
+            try:
+                from ..models import get_enum_items as _gei
+                _mt = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}[type]
+                _remote = [it for it in _gei(_mt) if str(it[0]).startswith("cineloom-remote/")]
+                _show_engine = len(_remote) > 1
+            except Exception:
+                pass
+        if _card_attr and _show_engine:
             _msel.prop(addon_prefs, _card_attr, text="Engine")
         try:
             _msel.prop(context.scene, "cineloom_backend_model", text="Model")
