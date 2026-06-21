@@ -192,6 +192,35 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                  "audio": audio_model_card, "text": text_model_card}.get(type, "")
         plugin = _reg_get_plugin(_card)
         def _has(sec): return plugin is None or sec in (plugin.UI_SECTIONS or [])
+
+        # --- Model selection at the TOP: choose what to make and which model
+        # first; parameters follow below. ---
+        _msel = layout.box().column()
+        _msel.use_property_split = True
+        _msel.use_property_decorate = False
+        try:
+            _msel.prop(context.scene, "generatorai_typeselect", text="Output")
+        except Exception:
+            pass
+        _card_attr = {"movie": "movie_model_card", "image": "image_model_card",
+                      "audio": "audio_model_card", "text": "text_model_card"}.get(type)
+        if _card_attr:
+            _msel.prop(addon_prefs, _card_attr, text="Model")
+        try:
+            _msel.prop(context.scene, "cineloom_backend_model", text="Backend Model")
+        except Exception:
+            pass
+        from ..models.base import InputSpec as _InputSpec
+        if plugin is not None and _InputSpec.HF_TOKEN in plugin.INPUTS:
+            _r = _msel.row(align=True)
+            _r.prop(addon_prefs, "hugginface_token")
+            _r.operator("wm.url_open", text="", icon="URL").url = "https://huggingface.co/settings/tokens"
+        if type == "text" and plugin is not None:
+            try:
+                plugin.draw_custom_ui(_msel, context)
+            except Exception:
+                pass
+
         col = layout.column(align=False)
         col.use_property_split = True
         col.use_property_decorate = False
@@ -445,49 +474,13 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 col.use_property_decorate = False
                 col.prop(context.scene, "generate_movie_prompt", text="", icon="ADD")
 
-        # Output.
+        # Model selection now lives at the top of the panel; open a box here for
+        # the batch / post-seed controls that follow.
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         col = layout.box()
         col = col.column(align=True)
-        try:
-            col.prop(context.scene, "generatorai_typeselect", text="Output")
-        except:
-            pass
-
-        # Backend model — grouped right under the Output type it is filtered by,
-        # so switching type immediately shows the matching backend models.
-        try:
-            col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
-        except Exception:
-            pass
-
-
-        if type == "movie":
-            col.prop(addon_prefs, "movie_model_card", text=" ")
-        if type == "audio":
-            col.prop(addon_prefs, "audio_model_card", text=" ")
-        if type == "text":
-            col.prop(addon_prefs, "text_model_card", text=" ")
-            from ..models.base import InputSpec as _InputSpec
-            if plugin is not None and _InputSpec.HF_TOKEN in plugin.INPUTS:
-                row = col.row(align=True)
-                row.prop(addon_prefs, "hugginface_token")
-                row.operator(
-                    "wm.url_open", text="", icon="URL"
-                ).url = "https://huggingface.co/settings/tokens"
-            if plugin is not None:
-                plugin.draw_custom_ui(col, context)
-        if type == "image":
-            col.prop(addon_prefs, "image_model_card", text=" ")
-            from ..models.base import InputSpec as _InputSpec
-            if plugin is not None and _InputSpec.HF_TOKEN in plugin.INPUTS:
-                row = col.row(align=True)
-                row.prop(addon_prefs, "hugginface_token")
-                row.operator(
-                    "wm.url_open", text="", icon="URL"
-                ).url = "https://huggingface.co/settings/tokens"
         # Batch Count: shown only when the active plugin actually produces
         # multiple distinct outputs per run. Deterministic single-output models
         # (captioning, transcription, stem split, external single-shot APIs)
