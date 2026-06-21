@@ -211,14 +211,6 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
             except:
                 pass
 
-            # In-panel backend model picker — choose which discovered model to
-            # generate on, without leaving for Preferences. Always shown; the list
-            # fills after Test Connection (Preferences).
-            try:
-                col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
-            except Exception:
-                pass
-
 
         if type != "text":
             if type != "audio":
@@ -462,6 +454,13 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
         try:
             col.prop(context.scene, "generatorai_typeselect", text="Output")
         except:
+            pass
+
+        # Backend model — grouped right under the Output type it is filtered by,
+        # so switching type immediately shows the matching backend models.
+        try:
+            col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
+        except Exception:
             pass
 
 

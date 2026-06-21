@@ -38,12 +38,18 @@ class CineloomRemoteTTSPlugin(ModelPlugin):
     def generate(self, client: CineloomRemoteClient, inputs: ModelInputs, scene, prefs) -> str:
         self.set_phase(inputs, "Preparing request")
         payload = {
-            "model": "tts",
             "input": inputs.prompt,
-            "voice": "default",
             "speed": float(inputs.speed) if inputs.speed else 1.0,
             "response_format": "wav",
         }
+        # Voice is backend/model-specific; omit it so the backend uses its default
+        # unless the user set one. (Sending an unknown voice id is a 400.)
+        voice = (getattr(scene, "cineloom_tts_voice", "") or "").strip()
+        if voice:
+            payload["voice"] = voice
+        model = (getattr(scene, "cineloom_backend_model", "") or "").strip()
+        if model:
+            payload["model"] = model
 
         # Optional speaker reference for voice cloning, uploaded if provided.
         if inputs.audio_ref:

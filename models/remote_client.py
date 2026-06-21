@@ -207,9 +207,20 @@ class CineloomRemoteClient:
     # ---- public API --------------------------------------------------- #
 
     def health(self) -> dict:
-        """Return the backend health payload (raises if unreachable)."""
-        result = self._request("GET", "/health", timeout=10)
-        return result if isinstance(result, dict) else {"raw": str(result)}
+        """Return a health payload (raises only if the backend is unreachable).
+
+        Backends differ on the health route, so try the common ones; if none
+        exist, fall back to ``GET /v1/models`` (which any OpenAI-compatible
+        backend serves) purely as a reachability probe.
+        """
+        for ep in ("/v1/health", "/healthz", "/health"):
+            try:
+                result = self._request("GET", ep, timeout=10)
+                return result if isinstance(result, dict) else {"status": "ok"}
+            except RemoteBackendError:
+                continue
+        self.list_models()  # raises if truly unreachable / unauthorized
+        return {"status": "ok"}
 
     def list_models(self) -> list:
         """Discover the backend's models via ``GET /v1/models`` (OpenAI-style).
@@ -269,18 +280,44 @@ class CineloomRemoteClient:
             return self.download_to(url, dest_path)
         raise RemoteBackendError(f"Cannot download artifact {file_ref}: {raw}")
 
-    def wait_for_job(
+    _DONE = ("succeeded", "completed", "success", "done", "ready", "finished")
+    _FAILED = ("failed", "error", "cancelled", "canceled")
+
+    def _poll(
         self,
-        job_id: str,
+        resource_path: Optional[str],
+        rid: str,
         *,
         progress_fn: ProgressFn = None,
         phase_fn: PhaseFn = None,
     ) -> dict:
-        """Poll ``/v1/jobs/{id}`` until terminal; return the final job dict."""
+        """Poll a job/resource until terminal; return the final dict.
+
+        Tries the resource endpoint ``{resource_path}/{rid}`` first (the OpenAI
+        video/image convention, used by e.g. ``/v1/videos/{id}``), and falls back
+        to the generic ``/v1/jobs/{rid}``. The first endpoint that answers is
+        reused for the rest of the poll loop.
+        """
+        candidates = []
+        if resource_path:
+            candidates.append(f"{resource_path}/{rid}")
+        candidates.append(f"/v1/jobs/{rid}")
+
+        endpoint = None
         deadline = time.monotonic() + self.cfg.job_timeout
         last_phase = ""
         while True:
-            job = self._request("GET", f"/v1/jobs/{job_id}", timeout=DEFAULT_TIMEOUT)
+            job = None
+            for ep in ([endpoint] if endpoint else candidates):
+                try:
+                    job = self._request("GET", ep, timeout=DEFAULT_TIMEOUT)
+                    endpoint = ep
+                    break
+                except RemoteBackendError:
+                    continue
+            if not isinstance(job, dict):
+                raise RemoteBackendError(f"Cannot poll job {rid} at {candidates}")
+
             status = str(job.get("status", "")).lower()
             phase = job.get("phase") or status
             if phase and phase != last_phase and phase_fn:
@@ -288,21 +325,24 @@ class CineloomRemoteClient:
                 last_phase = phase
             if progress_fn and "progress" in job:
                 try:
-                    p = float(job["progress"])
-                    progress_fn(int(p * 100), 100)
+                    progress_fn(int(float(job["progress"]) * 100), 100)
                 except (TypeError, ValueError):
                     pass
-            if status in ("succeeded", "completed", "success", "done"):
+            if status in self._DONE:
                 return job
-            if status in ("failed", "error", "cancelled", "canceled"):
+            if status in self._FAILED:
                 raise RemoteBackendError(
-                    f"Remote job {job_id} {status}: {job.get('error', job)}"
+                    f"Remote job {rid} {status}: {job.get('error', job)}"
                 )
             if time.monotonic() > deadline:
                 raise RemoteBackendError(
-                    f"Remote job {job_id} timed out after {self.cfg.job_timeout}s"
+                    f"Remote job {rid} timed out after {self.cfg.job_timeout}s"
                 )
             time.sleep(self.cfg.poll_interval)
+
+    def wait_for_job(self, job_id: str, **cb) -> dict:
+        """Poll ``/v1/jobs/{id}`` until terminal (kept for compatibility)."""
+        return self._poll(None, job_id, **cb)
 
     def _submit_and_collect(
         self,
@@ -315,10 +355,10 @@ class CineloomRemoteClient:
     ) -> str:
         """POST a generation request, follow the job, download to dest_path.
 
-        Handles three backend response shapes:
-        1. async  -> {"id"/"job_id": ...}  then poll + download
-        2. direct -> {"url"/"file_id"/"output": ...}
-        3. raw    -> binary body written straight to dest_path
+        Handles: a raw binary body; an immediate direct artifact
+        (``url``/``file_id`` or OpenAI ``data[0].url``); and an async job that is
+        polled then fetched — either from a ``url``/``file_id`` on the finished
+        job or from the resource content endpoint ``{path}/{id}/content``.
         """
         if phase_fn:
             phase_fn("Submitting")
@@ -329,24 +369,32 @@ class CineloomRemoteClient:
                 out.write(result)
             return dest_path
 
-        job_id = result.get("id") or result.get("job_id") or result.get("task_id")
-        # A direct artifact reference present immediately means no polling needed.
         direct = _extract_url(result) or _extract_file_id(result)
         status = str(result.get("status", "")).lower()
-        if job_id and status not in ("succeeded", "completed", "success", "done") and not direct:
+        if direct and status in self._DONE or (direct and not status):
+            if phase_fn:
+                phase_fn("Downloading")
+            return self.download_to(direct, dest_path)
+
+        rid = result.get("id") or result.get("job_id") or result.get("task_id")
+        if not rid and not direct:
+            raise RemoteBackendError(
+                f"Remote response had no artifact or job id: {result}"
+            )
+
+        if rid and status not in self._DONE:
             if phase_fn:
                 phase_fn("Generating (remote)")
-            job = self.wait_for_job(
-                job_id, progress_fn=progress_fn, phase_fn=phase_fn
-            )
-            direct = _extract_url(job) or _extract_file_id(job)
-        if not direct:
-            raise RemoteBackendError(
-                f"Remote response had no artifact reference: {result}"
-            )
+            final = self._poll(path, rid, progress_fn=progress_fn, phase_fn=phase_fn)
+            direct = _extract_url(final) or _extract_file_id(final) or direct
+
         if phase_fn:
             phase_fn("Downloading")
-        return self.download_to(direct, dest_path)
+        if direct:
+            return self.download_to(direct, dest_path)
+        # Resource content endpoint (e.g. /v1/videos/{id}/content).
+        content_url = f"{self.cfg.base_url}{path}/{rid}/content"
+        return self.download_to(content_url, dest_path)
 
     # ---- typed generation calls --------------------------------------- #
 
@@ -389,19 +437,10 @@ class CineloomRemoteClient:
 
         body = dict(payload)
         body["control_file_id"] = file_id
-        if phase_fn:
-            phase_fn("Submitting")
-        result = self._request("POST", "/v1/videos", json_body=body, timeout=120)
-        job_id = result.get("id") or result.get("job_id")
-        direct = _extract_url(result) or _extract_file_id(result)
-        if job_id and not direct:
-            job = self.wait_for_job(job_id, progress_fn=progress_fn, phase_fn=phase_fn)
-            direct = _extract_url(job) or _extract_file_id(job)
-        if not direct:
-            raise RemoteBackendError(f"Control response had no artifact: {result}")
-        if phase_fn:
-            phase_fn("Downloading")
-        return self.download_to(direct, dest_path)
+        return self._submit_and_collect(
+            "/v1/videos", body, dest_path,
+            progress_fn=progress_fn, phase_fn=phase_fn,
+        )
 
     def transcribe(self, filename: str, content: bytes, model: str = "") -> str:
         """ASR: upload audio multipart, return the transcript text."""

@@ -2,17 +2,15 @@
 Cineloom Remote · text → image (self-hosted remote backend)
 ===========================================================
 
-Generate reference frames / stills on the remote GPU backend via
-``POST /v1/images/generations``. Returns a PIL image (the framework saves and
-inserts it), matching the local image-plugin contract.
+Generate reference frames / stills on a remote backend via
+``POST /v1/images/generations``. Returns the downloaded PNG file path (the
+queue inserts it as an image strip) — no local image library required, keeping
+the bridge stdlib-only.
 """
-
-from io import BytesIO
-import os
-import tempfile
 
 from ...models.base import ModelPlugin, InputSpec, UISection, ParamSpec, ModelInputs
 from ...models.remote_client import CineloomRemoteClient, RemoteConfig
+from ...utils.helpers import solve_path, clean_filename
 
 
 class CineloomRemoteImagePlugin(ModelPlugin):
@@ -41,11 +39,8 @@ class CineloomRemoteImagePlugin(ModelPlugin):
         return client
 
     def generate(self, client: CineloomRemoteClient, inputs: ModelInputs, scene, prefs):
-        from PIL import Image
-
         self.set_phase(inputs, "Preparing request")
         payload = {
-            "model": "image",
             "prompt": inputs.prompt,
             "negative_prompt": inputs.neg_prompt,
             "width": int(inputs.width),
@@ -54,17 +49,15 @@ class CineloomRemoteImagePlugin(ModelPlugin):
             "guidance_scale": float(inputs.guidance),
             "seed": int(inputs.seed),
         }
+        model = (getattr(scene, "cineloom_backend_model", "") or "").strip()
+        if model:
+            payload["model"] = model
 
-        tmp = os.path.join(tempfile.gettempdir(), f"cineloom_img_{inputs.seed}.png")
+        dst_path = solve_path(
+            clean_filename(f"remote_img_{inputs.seed}_{inputs.prompt}") + ".png"
+        )
 
         def _phase(label: str) -> None:
             self.set_phase(inputs, label)
 
-        path = client.generate_image(payload, tmp, phase_fn=_phase)
-        with open(path, "rb") as fh:
-            img = Image.open(BytesIO(fh.read())).convert("RGB")
-        try:
-            os.remove(path)
-        except OSError:
-            pass
-        return img
+        return client.generate_image(payload, dst_path, phase_fn=_phase)
