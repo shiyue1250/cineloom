@@ -637,9 +637,9 @@ class FLORENCE2_PT_mask_panel(Panel):
         # ── Scene-level description ──────────────────────────────────────────
         box = layout.box()
         box.label(text="Scene", icon="SCENE_DATA")
-        box.textbox(mp, "f2_high_level_description", placeholder="Scene description...")
+        box.prop(mp, "f2_high_level_description", text="", placeholder="Scene description...")
         box.label(text="Background:")
-        box.textbox(mp, "f2_background", placeholder="Background description...")
+        box.prop(mp, "f2_background", text="", placeholder="Background description...")
 
         # ── Style description ────────────────────────────────────────────────
         box = layout.box()
@@ -648,19 +648,19 @@ class FLORENCE2_PT_mask_panel(Panel):
         row.prop(mp, "f2_is_photo", text="Photo", toggle=True)
         row.prop(mp, "f2_is_photo", text="Art", toggle=True, invert_checkbox=True)
         box.label(text="Aesthetics:")
-        box.textbox(mp, "f2_aesthetics", placeholder="e.g. cinematic, vibrant, moody")
+        box.prop(mp, "f2_aesthetics", text="", placeholder="e.g. cinematic, vibrant, moody")
         box.label(text="Lighting:")
-        box.textbox(mp, "f2_lighting", placeholder="e.g. golden hour, soft shadows")
+        box.prop(mp, "f2_lighting", text="", placeholder="e.g. golden hour, soft shadows")
         if mp.f2_is_photo:
             box.label(text="Camera / Lens:")
-            box.textbox(mp, "f2_photo", placeholder="e.g. 35mm, f/1.4, eye-level")
+            box.prop(mp, "f2_photo", text="", placeholder="e.g. 35mm, f/1.4, eye-level")
             box.label(text="Medium:")
-            box.textbox(mp, "f2_medium", placeholder="e.g. photograph")
+            box.prop(mp, "f2_medium", text="", placeholder="e.g. photograph")
         else:
             box.label(text="Medium:")
-            box.textbox(mp, "f2_medium", placeholder="e.g. illustration, 3d_render")
+            box.prop(mp, "f2_medium", text="", placeholder="e.g. illustration, 3d_render")
             box.label(text="Art Style:")
-            box.textbox(mp, "f2_art_style", placeholder="e.g. flat vector, bold outlines")
+            box.prop(mp, "f2_art_style", text="", placeholder="e.g. flat vector, bold outlines")
         box.label(text="Color Palette (up to 16):")
         _draw_palette(box, mp.f2_style_palette, "style", limit=16)
 
@@ -708,10 +708,10 @@ class FLORENCE2_PT_mask_panel(Panel):
         ld = _get_layer_data(active, mask)
         if ld:
             box.prop(ld, "f2_type", text="")
-            box.textbox(ld, "f2_desc", placeholder="Object description...")
+            box.prop(ld, "f2_desc", text="", placeholder="Object description...")
             if ld.f2_type == "text":
                 box.label(text="Text Content:")
-                box.textbox(ld, "f2_text", placeholder="Text to render in image...")
+                box.prop(ld, "f2_text", text="", placeholder="Text to render in image...")
             box.label(text="Color Palette (up to 5):")
             _draw_palette(box, ld.f2_palette, "layer", layer_name=active.name, limit=5)
         else:

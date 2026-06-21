@@ -212,11 +212,10 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 pass
 
             # In-panel backend model picker — choose which discovered model to
-            # generate on, without leaving for Preferences. Shown once connected.
+            # generate on, without leaving for Preferences. Always shown; the list
+            # fills after Test Connection (Preferences).
             try:
-                from .cineloom_jobs import discovery_status
-                if discovery_status().get("models"):
-                    col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
+                col.prop(context.scene, "cineloom_backend_model", text="Backend Model")
             except Exception:
                 pass
 
@@ -297,14 +296,13 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 col.use_property_decorate = False
                 if type != "audio":
                     col.prop(context.scene, "generatorai_styles", text="")
-                col.textbox(context.scene, "generate_movie_prompt", placeholder='Positive prompt...')#, text="")#prop, icon="ADD")
+                col.prop(context.scene, "generate_movie_prompt", text="", placeholder='Positive prompt...')
                 if _has(UISection.NEG_PROMPT):
-                    col.textbox(
+                    col.prop(
                         context.scene,
                         "generate_movie_negative_prompt",
+                        text="",
                         placeholder='Negative prompt...',
-                        #text="",
-                        #icon="REMOVE", 
                     )
                     
             layout = self.layout
@@ -358,7 +356,7 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 col.prop(context.scene, "music_bpm", text="BPM")
                 col.prop(context.scene, "music_key_scale", text="Key")
                 col.prop(context.scene, "music_time_signature", text="Time Sig.")
-                col.textbox(context.scene, "music_lyrics", placeholder="Lyrics")
+                col.prop(context.scene, "music_lyrics", text="", placeholder="Lyrics")
 
             if type == "audio" and plugin is not None:
                 plugin.draw_custom_ui(col, context)
