@@ -206,6 +206,30 @@ class CineloomRemoteClient:
         result = self._request("GET", "/health", timeout=10)
         return result if isinstance(result, dict) else {"raw": str(result)}
 
+    def list_models(self) -> list:
+        """Discover the backend's models via ``GET /v1/models`` (OpenAI-style).
+
+        Returns a list of dicts, each at least ``{"id": ...}``; ``type`` and
+        ``modes`` are used when present. Backend-agnostic — works against any
+        compliant ``/v1`` service.
+        """
+        result = self._request("GET", "/v1/models", timeout=15)
+        if isinstance(result, dict):
+            data = result.get("data", result.get("models", []))
+        else:
+            data = result if isinstance(result, list) else []
+        out = []
+        for m in data:
+            if isinstance(m, dict) and m.get("id"):
+                out.append({
+                    "id": m["id"],
+                    "type": m.get("type", ""),
+                    "modes": m.get("modes", []),
+                })
+            elif isinstance(m, str):
+                out.append({"id": m, "type": "", "modes": []})
+        return out
+
     def upload_file(self, filename: str, content: bytes, purpose: str = "reference") -> str:
         """Upload a reference file, returning its file id."""
         body, ctype = self._multipart(

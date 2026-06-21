@@ -12,6 +12,7 @@ register_jobs()/unregister_jobs() from the add-on __init__.
 """
 
 import os
+import time
 
 import bpy
 from bpy.types import Panel, Operator, PropertyGroup
@@ -19,6 +20,41 @@ from bpy.props import StringProperty, BoolProperty
 
 # Add-on root package, e.g. "bl_ext.user_default.cineloom"
 _ROOT = __package__.rsplit(".", 1)[0]
+
+# Backend discovery state (kept fresh by a periodic timer once a URL is set).
+_DISCOVERY = {"ok": None, "msg": "Not tested yet", "models": [], "at": 0.0}
+
+
+def discovery_status():
+    return _DISCOVERY
+
+
+def _do_discovery():
+    """Connect to the configured backend and list its models (GET /v1/models)."""
+    from ..models.remote_client import CineloomRemoteClient, RemoteConfig
+    try:
+        client = CineloomRemoteClient(RemoteConfig.from_prefs(_prefs()))
+        try:
+            client.health()
+        except Exception:  # noqa: BLE001
+            pass  # /health is optional; the model list is what matters
+        models = client.list_models()
+        _DISCOVERY.update(ok=True, msg="Connected — %d model(s)" % len(models),
+                          models=models, at=time.time())
+        return True, _DISCOVERY["msg"]
+    except Exception as exc:  # noqa: BLE001
+        _DISCOVERY.update(ok=False, msg=str(exc), models=[], at=time.time())
+        return False, str(exc)
+
+
+def _discovery_tick():
+    # Persistent connection: refresh the model list periodically while a URL is set.
+    try:
+        if (getattr(_prefs(), "cineloom_remote_url", "") or "").strip():
+            _do_discovery()
+    except Exception:  # noqa: BLE001
+        pass
+    return 300.0  # every 5 minutes
 
 
 def _prefs():
@@ -128,6 +164,17 @@ class CINELOOM_OT_download_job(Operator):
         return {'FINISHED'}
 
 
+class CINELOOM_OT_test_connection(Operator):
+    bl_idname = "cineloom.test_connection"
+    bl_label = "Test Connection & Discover Models"
+    bl_description = "Reach the backend and list its available models (GET /v1/models)"
+
+    def execute(self, context):
+        ok, msg = _do_discovery()
+        self.report({'INFO'} if ok else {'ERROR'}, msg)
+        return {'FINISHED'} if ok else {'CANCELLED'}
+
+
 class SEQUENCER_PT_cineloom_jobs(Panel):
     bl_label = "Cineloom Jobs"
     bl_idname = "SEQUENCER_PT_cineloom_jobs"
@@ -168,6 +215,7 @@ _jobs_classes = (
     CINELOOM_OT_refresh_jobs,
     CINELOOM_OT_import_job,
     CINELOOM_OT_download_job,
+    CINELOOM_OT_test_connection,
     SEQUENCER_PT_cineloom_jobs,
 )
 
@@ -176,9 +224,16 @@ def register_jobs():
     for cls in _jobs_classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.cineloom_jobs = bpy.props.CollectionProperty(type=CineloomJobItem)
+    if not bpy.app.timers.is_registered(_discovery_tick):
+        bpy.app.timers.register(_discovery_tick, first_interval=300.0, persistent=True)
 
 
 def unregister_jobs():
+    try:
+        if bpy.app.timers.is_registered(_discovery_tick):
+            bpy.app.timers.unregister(_discovery_tick)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         del bpy.types.Scene.cineloom_jobs
     except Exception:  # noqa: BLE001

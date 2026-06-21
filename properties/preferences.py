@@ -338,8 +338,19 @@ class GeneratorAddonPreferences(AddonPreferences):
         remote_box.prop(self, "cineloom_remote_url")
         remote_box.prop(self, "cineloom_control_url")
         remote_box.prop(self, "cineloom_remote_api_key")
+        remote_box.operator("cineloom.test_connection", icon="LINKED")
+        try:
+            from ..ui.cineloom_jobs import discovery_status
+            st = discovery_status()
+            icon = "CHECKMARK" if st["ok"] else ("ERROR" if st["ok"] is False else "INFO")
+            remote_box.label(text=st["msg"], icon=icon)
+            for m in st["models"][:10]:
+                t = " (%s)" % m["type"] if m.get("type") else ""
+                remote_box.label(text="    • %s%s" % (m["id"], t))
+        except Exception:  # noqa: BLE001
+            pass
         remote_box.label(
-            text="Pick a 'Cineloom Remote · …' model to generate on the GPU server.",
+            text="Pick a 'Cineloom Remote · …' model to generate on the backend.",
             icon="INFO",
         )
 
