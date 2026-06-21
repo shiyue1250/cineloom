@@ -51,20 +51,29 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
 
     def draw_post_seed_ui(self, col, context):
         modes = _modes(context.scene)
-        if "storyboard" in modes:
-            box = col.box()
-            box.label(text="Shots (continuous):", icon="SEQUENCE")
-            for i, sh in enumerate(context.scene.cineloom_shots):
-                row = box.row(align=True)
-                row.prop(sh, "prompt", text="")
-                row.prop(sh, "seconds", text="")
-                row.operator("cineloom.shot_remove", text="", icon="X").index = i
-            box.operator("cineloom.shot_add", text="Add Shot", icon="ADD")
-        elif "flf" in modes:
+        if "flf" in modes:
             box = col.box()
             box.label(text="Frames to interpolate:", icon="IMAGE_DATA")
             box.prop(context.scene, "cineloom_flf_first")
             box.prop(context.scene, "cineloom_flf_last")
+            return
+        # Storyboard-capable models (i2v variants / storyboard) → a shot list.
+        # Leave it empty to generate a single clip instead.
+        if modes & {"storyboard", "i2v"}:
+            box = col.box()
+            box.label(text="Storyboard shots (empty = single clip):", icon="SEQUENCE")
+            for i, sh in enumerate(context.scene.cineloom_shots):
+                sb = box.box()
+                hdr = sb.row(align=True)
+                hdr.label(text="Shot %d" % (i + 1))
+                hdr.operator("cineloom.shot_remove", text="", icon="X").index = i
+                sb.prop(sh, "prompt", text="Prompt")
+                sb.prop(sh, "negative", text="Negative")
+                row = sb.row(align=True)
+                row.prop(sh, "seconds", text="Sec")
+                row.prop(sh, "seed", text="Seed")
+                sb.prop(sh, "image", text="Ref")
+            box.operator("cineloom.shot_add", text="Add Shot", icon="ADD")
 
     def load(self, prefs, scene, **kwargs):
         client = CineloomRemoteClient(RemoteConfig.from_prefs(prefs))
@@ -84,14 +93,25 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
             if inputs.progress_fn is not None:
                 inputs.progress_fn(done, total)
 
-        # Storyboard model → continuous multi-shot video.
-        if "storyboard" in modes:
-            shots = [
-                {"prompt": s.prompt, "seconds": float(s.seconds)}
-                for s in scene.cineloom_shots if s.prompt.strip()
-            ]
-            if not shots:
-                raise RuntimeError("Add at least one shot ('Add Shot') for this storyboard model.")
+        # Shots present (on a storyboard-capable model) → continuous multi-shot.
+        shot_items = [s for s in scene.cineloom_shots if s.prompt.strip()]
+        if shot_items and (modes & {"storyboard", "i2v"}):
+            import os
+            import bpy
+            self.set_phase(inputs, "Preparing shots")
+            shots = []
+            for s in shot_items:
+                shot = {"prompt": s.prompt, "seconds": float(s.seconds)}
+                if s.negative.strip():
+                    shot["negative_prompt"] = s.negative
+                if s.seed >= 0:
+                    shot["seed"] = int(s.seed)
+                img = bpy.path.abspath(s.image or "")
+                if img and os.path.isfile(img):
+                    with open(img, "rb") as fh:
+                        shot["reference_file_id"] = client.upload_file(
+                            os.path.basename(img), fh.read(), purpose="reference")
+                shots.append(shot)
             payload = {"first_frame_prompt": inputs.prompt, "shots": shots}
             if model:
                 payload["model"] = model

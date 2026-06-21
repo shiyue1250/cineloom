@@ -259,7 +259,12 @@ class CineloomJobItem(PropertyGroup):
 
 class CineloomShot(PropertyGroup):
     prompt: StringProperty(name="Shot", description="What happens in this shot")
-    seconds: FloatProperty(name="Sec", default=4.0, min=1.0, max=20.0)
+    negative: StringProperty(name="Negative", description="What to avoid in this shot")
+    seconds: FloatProperty(name="Seconds", default=4.0, min=1.0, max=20.0)
+    seed: IntProperty(name="Seed", default=-1, min=-1,
+                      description="Seed for this shot (-1 = automatic)")
+    image: StringProperty(name="Reference", subtype="FILE_PATH",
+                          description="Optional reference image anchoring this shot")
 
 
 class CINELOOM_OT_shot_add(Operator):
