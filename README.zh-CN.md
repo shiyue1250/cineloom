@@ -49,9 +49,12 @@ flowchart TD
 
 ### 配置后端
 
-在 **编辑 ▸ 偏好设置 ▸ 插件 ▸ Cineloom** 中填写 **Remote Backend URL**（若后端
-需要鉴权，再填写 **API Key**），随后点击 **Test Connection & Discover Models**，
-即可加载后端的可用模型。
+在 **编辑 ▸ 偏好设置 ▸ 插件 ▸ Cineloom** 中展开插件项以显示其偏好设置。填写
+**Remote Backend URL** —— 仅填主机与端口，例如 `http://你的后端主机:8000`（结尾的
+`/v1` 可写可不写）。若后端需要鉴权，再填写 **API Key**，随后点击 **Test Connection
+& Discover Models** 即可加载后端的可用模型。
+
+![在插件偏好设置中配置后端](docs/images/connect-zh.png)
 
 ### 从源码运行（开发者）
 

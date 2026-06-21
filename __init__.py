@@ -371,6 +371,10 @@ def register():
     from .ui.cineloom_jobs import register_jobs as _reg_jobs
     _reg_jobs()
 
+    # Simplified-Chinese UI translations
+    from .translations import register_translations as _reg_i18n
+    _reg_i18n()
+
     # Render Queue
     from .operators.queue_ops import RenderQueueJob as _RQJ
     bpy.types.Scene.render_queue = bpy.props.CollectionProperty(type=_RQJ)
@@ -987,6 +991,11 @@ def unregister():
     try:
         from .ui.cineloom_jobs import unregister_jobs as _unreg_jobs
         _unreg_jobs()
+    except Exception:
+        pass
+    try:
+        from .translations import unregister_translations as _unreg_i18n
+        _unreg_i18n()
     except Exception:
         pass
     for cls in classes:

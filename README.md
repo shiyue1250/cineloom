@@ -55,9 +55,13 @@ flowchart TD
 
 ### Backend configuration
 
-In **Edit ▸ Preferences ▸ Add-ons ▸ Cineloom**, set the **Remote Backend URL**
-(and an **API Key**, if the backend requires one), then select **Test Connection
-& Discover Models** to load the backend's available models.
+In **Edit ▸ Preferences ▸ Add-ons ▸ Cineloom**, expand the add-on entry to reveal
+its preferences. Set the **Remote Backend URL** — the host and port only, e.g.
+`http://your-backend-host:8000` (a trailing `/v1` is accepted but not required).
+Add an **API Key** if the backend requires one, then select **Test Connection &
+Discover Models** to load the backend's available models.
+
+![Configuring the backend in the add-on preferences](docs/images/connect-en.png)
 
 ### From source (developers)
 

@@ -93,9 +93,14 @@ class RemoteConfig:
         if not base:
             raise RemoteBackendError(
                 f"{label} is not set. Open the Cineloom add-on preferences and "
-                f"fill it in (e.g. http://your-gpu-host:8879), or set {env_url}."
+                f"fill it in (e.g. http://your-backend-host:PORT), or set {env_url}."
             )
-        return cls(base_url=base.rstrip("/"), api_key=key)
+        # Tolerate a trailing /v1 — the client appends /v1/... paths itself, so a
+        # base URL of ".../v1" would otherwise double to ".../v1/v1/...".
+        base = base.strip().rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3].rstrip("/")
+        return cls(base_url=base, api_key=key)
 
 
 # --------------------------------------------------------------------------- #
