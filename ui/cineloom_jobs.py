@@ -17,7 +17,7 @@ import time
 
 import bpy
 from bpy.types import Panel, Operator, PropertyGroup
-from bpy.props import StringProperty, BoolProperty, IntProperty, FloatProperty
+from bpy.props import StringProperty, BoolProperty, IntProperty, FloatProperty, EnumProperty
 
 # Add-on root package, e.g. "bl_ext.user_default.cineloom"
 _ROOT = __package__.rsplit(".", 1)[0]
@@ -258,13 +258,31 @@ class CineloomJobItem(PropertyGroup):
 
 
 class CineloomShot(PropertyGroup):
-    prompt: StringProperty(name="Shot", description="What happens in this shot")
-    negative: StringProperty(name="Negative", description="What to avoid in this shot")
+    prompt: StringProperty(
+        name="Shot",
+        description="Motion for this shot — continuous action verbs work best")
     seconds: FloatProperty(name="Seconds", default=4.0, min=1.0, max=20.0)
-    seed: IntProperty(name="Seed", default=-1, min=-1,
-                      description="Seed for this shot (-1 = automatic)")
-    image: StringProperty(name="Reference", subtype="FILE_PATH",
-                          description="Optional reference image anchoring this shot")
+    source: EnumProperty(
+        name="Source",
+        items=[("continue", "Continue", "Continue from the previous shot's last frame"),
+               ("new_scene", "New scene", "Cut to a new scene/character/place")],
+        default="continue")
+    scene_prompt: StringProperty(
+        name="New-scene prompt",
+        description="New opening frame for this shot (only when Source = New scene)")
+    scene_image: StringProperty(
+        name="New-scene image", subtype="FILE_PATH",
+        description="Upload a new opening frame instead (only when Source = New scene)")
+    narration: StringProperty(
+        name="Narration", description="Optional voiceover spoken over this shot")
+    last_frame: StringProperty(
+        name="Last frame", subtype="FILE_PATH",
+        description="Optional target last frame (FLF2V; needs ~7s+ on i2v base)")
+    transition: EnumProperty(
+        name="Transition",
+        items=[("seamless", "Seamless", "Drop duplicate frames for a smooth join"),
+               ("cut", "Cut", "Hard cut")],
+        default="seamless")
 
 
 class CINELOOM_OT_shot_add(Operator):
@@ -443,6 +461,11 @@ def register_jobs():
         name="First Frame", subtype="FILE_PATH", description="Image for the first frame")
     bpy.types.Scene.cineloom_flf_last = bpy.props.StringProperty(
         name="Last Frame", subtype="FILE_PATH", description="Image for the last frame")
+    bpy.types.Scene.cineloom_sb_size = bpy.props.EnumProperty(
+        name="Aspect", description="Storyboard output aspect ratio",
+        items=[("16:9", "16:9", ""), ("9:16", "9:16", ""), ("1:1", "1:1", ""),
+               ("4:3", "4:3", ""), ("3:4", "3:4", "")],
+        default="16:9")
     _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_ensure_channel):
         bpy.app.timers.register(_ensure_channel, first_interval=0.3)
@@ -461,7 +484,7 @@ def unregister_jobs():
         pass
     for prop in ("cineloom_jobs", "cineloom_shots", "cineloom_backend_model",
                  "cineloom_channel", "cineloom_control_type",
-                 "cineloom_flf_first", "cineloom_flf_last"):
+                 "cineloom_flf_first", "cineloom_flf_last", "cineloom_sb_size"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001

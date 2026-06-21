@@ -62,17 +62,22 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
         if modes & {"storyboard", "i2v"}:
             box = col.box()
             box.label(text="Storyboard shots (empty = single clip):", icon="SEQUENCE")
+            box.prop(context.scene, "cineloom_sb_size", text="Aspect")
             for i, sh in enumerate(context.scene.cineloom_shots):
                 sb = box.box()
                 hdr = sb.row(align=True)
                 hdr.label(text="Shot %d" % (i + 1))
+                hdr.prop(sh, "source", text="")
                 hdr.operator("cineloom.shot_remove", text="", icon="X").index = i
-                sb.prop(sh, "prompt", text="Prompt")
-                sb.prop(sh, "negative", text="Negative")
+                sb.prop(sh, "prompt", text="Motion")
                 row = sb.row(align=True)
                 row.prop(sh, "seconds", text="Sec")
-                row.prop(sh, "seed", text="Seed")
-                sb.prop(sh, "image", text="Ref")
+                row.prop(sh, "transition", text="")
+                if sh.source == "new_scene":
+                    sb.prop(sh, "scene_prompt", text="Scene")
+                    sb.prop(sh, "scene_image", text="Scene img")
+                sb.prop(sh, "last_frame", text="Last frame")
+                sb.prop(sh, "narration", text="Narration")
             box.operator("cineloom.shot_add", text="Add Shot", icon="ADD")
 
     def load(self, prefs, scene, **kwargs):
@@ -98,22 +103,38 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
         if shot_items and (modes & {"storyboard", "i2v"}):
             import os
             import bpy
+
+            def _upload(path):
+                ap = bpy.path.abspath(path or "")
+                if ap and os.path.isfile(ap):
+                    with open(ap, "rb") as fh:
+                        return client.upload_file(os.path.basename(ap), fh.read(), purpose="reference")
+                return None
+
             self.set_phase(inputs, "Preparing shots")
             shots = []
             for s in shot_items:
-                shot = {"prompt": s.prompt, "seconds": float(s.seconds)}
-                if s.negative.strip():
-                    shot["negative_prompt"] = s.negative
-                if s.seed >= 0:
-                    shot["seed"] = int(s.seed)
-                img = bpy.path.abspath(s.image or "")
-                if img and os.path.isfile(img):
-                    with open(img, "rb") as fh:
-                        shot["reference_file_id"] = client.upload_file(
-                            os.path.basename(img), fh.read(), purpose="reference")
+                shot = {"prompt": s.prompt, "seconds": float(s.seconds),
+                        "source": s.source, "transition": s.transition}
+                if s.narration.strip():
+                    shot["narration"] = s.narration
+                if s.source == "new_scene":
+                    if s.scene_prompt.strip():
+                        shot["scene_prompt"] = s.scene_prompt
+                    sid = _upload(s.scene_image)
+                    if sid:
+                        shot["scene_image"] = sid
+                lid = _upload(s.last_frame)
+                if lid:
+                    shot["last_frame"] = lid
                 shots.append(shot)
-            payload = {"first_frame_prompt": inputs.prompt, "shots": shots}
-            if model:
+            payload = {
+                "first_frame_prompt": inputs.prompt,
+                "shots": shots,
+                "size": getattr(scene, "cineloom_sb_size", "16:9"),
+                "seed": int(inputs.seed),
+            }
+            if model:                       # the selected model is the shot_model
                 payload["model"] = model
             return client.generate_storyboard(payload, dst_path, phase_fn=_phase, progress_fn=_progress)
 
