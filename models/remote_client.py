@@ -412,6 +412,11 @@ class CineloomRemoteClient:
             "/v1/images/generations", payload, dest_path, **cb
         )
 
+    def generate_storyboard(self, payload: dict, dest_path: str, **cb) -> str:
+        """Multi-shot continuous video: POST /v1/storyboard (full mode auto-
+        renders), poll /v1/storyboard/{id}, fetch /v1/storyboard/{id}/content."""
+        return self._submit_and_collect("/v1/storyboard", payload, dest_path, **cb)
+
     def generate_speech(self, payload: dict, dest_path: str, **cb) -> str:
         return self._submit_and_collect(
             "/v1/audio/speech", payload, dest_path, **cb

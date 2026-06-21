@@ -17,6 +17,7 @@ class CineloomRemoteASRPlugin(ModelPlugin):
     MODEL_ID     = "cineloom-remote/asr"
     DISPLAY_NAME = "Cineloom Remote · Transcribe (ASR)"
     MODEL_TYPE   = "text"
+    BACKEND_MODES = {"asr"}
     DESCRIPTION  = (
         "Transcribe a selected sound/video strip on a remote backend "
         "(OpenAI /v1/audio/transcriptions). The transcript becomes a text strip."

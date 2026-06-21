@@ -15,6 +15,7 @@ class CineloomRemoteChatPlugin(ModelPlugin):
     MODEL_ID     = "cineloom-remote/chat"
     DISPLAY_NAME = "Cineloom Remote · Text (chat)"
     MODEL_TYPE   = "text"
+    BACKEND_MODES = {"chat"}
     DESCRIPTION  = (
         "Text generation on a remote backend (OpenAI /v1/chat/completions). "
         "Type a prompt; the reply becomes a text strip. Pick the backend model "

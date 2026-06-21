@@ -28,6 +28,7 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
     MODEL_ID     = "cineloom-remote/ltx-2.3"
     DISPLAY_NAME = "Cineloom Remote · Video (GPU server)"
     MODEL_TYPE   = "video"
+    BACKEND_MODES = {"t2v", "i2v", "control"}
     DESCRIPTION  = (
         "Text → video on your remote backend. Optionally select a reference "
         "video strip to drive the motion/structure (IC-LoRA control). No local "

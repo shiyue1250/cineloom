@@ -17,6 +17,7 @@ class CineloomRemoteTTSPlugin(ModelPlugin):
     MODEL_ID     = "cineloom-remote/tts"
     DISPLAY_NAME = "Cineloom Remote · TTS (GPU server)"
     MODEL_TYPE   = "audio"
+    BACKEND_MODES = {"tts"}
     DESCRIPTION  = (
         "Text → speech on your remote GPU backend (any OpenAI-compatible /v1 "
         "TTS endpoint). No local GPU needed. Set the URL in add-on preferences."

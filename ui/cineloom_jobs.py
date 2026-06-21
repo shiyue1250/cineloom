@@ -17,7 +17,7 @@ import time
 
 import bpy
 from bpy.types import Panel, Operator, PropertyGroup
-from bpy.props import StringProperty, BoolProperty
+from bpy.props import StringProperty, BoolProperty, IntProperty, FloatProperty
 
 # Add-on root package, e.g. "bl_ext.user_default.cineloom"
 _ROOT = __package__.rsplit(".", 1)[0]
@@ -161,11 +161,20 @@ def backend_model_items(self, context):
         _load_discovery()           # belt-and-suspenders: fill from cache on first draw
         _loaded_from_cache = True
     type_map = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}
-    want = type_map.get(getattr(self, "generatorai_typeselect", "movie"), "")
-    # Only modes the add-on's plugins can actually drive — others (i2v, flf,
-    # storyboard, relay, render, asr) need dedicated input handling, so hide them
-    # rather than list models that would not produce a result.
+    type_sel = getattr(self, "generatorai_typeselect", "movie")
+    want = type_map.get(type_sel, "")
+    # Modes the *selected engine* can drive (so e.g. the Storyboard engine lists
+    # storyboard models, not t2v). Falls back to the per-type default.
     supported = _SUPPORTED_MODES.get(want, set())
+    try:
+        from ..models import get_plugin
+        card = {"movie": "movie_model_card", "image": "image_model_card",
+                "audio": "audio_model_card", "text": "text_model_card"}.get(type_sel)
+        plugin = get_plugin(getattr(_prefs(), card, "")) if card else None
+        if plugin is not None and getattr(plugin, "BACKEND_MODES", None):
+            supported = set(plugin.BACKEND_MODES)
+    except Exception:  # noqa: BLE001
+        pass
     items = [("", "(Backend default)", "Let the backend choose the model")]
     for m in _DISCOVERY.get("models", []):
         t = m.get("type", "")
@@ -219,6 +228,34 @@ class CineloomJobItem(PropertyGroup):
     prompt: StringProperty()
     file_id: StringProperty()
     control_file_id: StringProperty()
+
+
+class CineloomShot(PropertyGroup):
+    prompt: StringProperty(name="Shot", description="What happens in this shot")
+    seconds: FloatProperty(name="Sec", default=4.0, min=1.0, max=20.0)
+
+
+class CINELOOM_OT_shot_add(Operator):
+    bl_idname = "cineloom.shot_add"
+    bl_label = "Add Shot"
+    bl_description = "Add a storyboard shot"
+
+    def execute(self, context):
+        context.scene.cineloom_shots.add().seconds = 4.0
+        return {'FINISHED'}
+
+
+class CINELOOM_OT_shot_remove(Operator):
+    bl_idname = "cineloom.shot_remove"
+    bl_label = "Remove Shot"
+    index: IntProperty(default=-1)
+
+    def execute(self, context):
+        shots = context.scene.cineloom_shots
+        i = self.index if self.index >= 0 else len(shots) - 1
+        if 0 <= i < len(shots):
+            shots.remove(i)
+        return {'FINISHED'}
 
 
 class CINELOOM_OT_refresh_jobs(Operator):
@@ -336,6 +373,9 @@ class SEQUENCER_PT_cineloom_jobs(Panel):
 
 _jobs_classes = (
     CineloomJobItem,
+    CineloomShot,
+    CINELOOM_OT_shot_add,
+    CINELOOM_OT_shot_remove,
     CINELOOM_OT_refresh_jobs,
     CINELOOM_OT_import_job,
     CINELOOM_OT_download_job,
@@ -348,6 +388,7 @@ def register_jobs():
     for cls in _jobs_classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.cineloom_jobs = bpy.props.CollectionProperty(type=CineloomJobItem)
+    bpy.types.Scene.cineloom_shots = bpy.props.CollectionProperty(type=CineloomShot)
     bpy.types.Scene.cineloom_backend_model = bpy.props.EnumProperty(
         name="Backend Model",
         description="Which discovered backend model to use; run Test Connection to populate",
@@ -380,8 +421,8 @@ def unregister_jobs():
             bpy.app.timers.unregister(_discovery_tick)
     except Exception:  # noqa: BLE001
         pass
-    for prop in ("cineloom_jobs", "cineloom_backend_model", "cineloom_channel",
-                 "cineloom_control_type"):
+    for prop in ("cineloom_jobs", "cineloom_shots", "cineloom_backend_model",
+                 "cineloom_channel", "cineloom_control_type"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001

@@ -17,6 +17,7 @@ class CineloomRemoteImagePlugin(ModelPlugin):
     MODEL_ID     = "cineloom-remote/image"
     DISPLAY_NAME = "Cineloom Remote · Image (GPU server)"
     MODEL_TYPE   = "image"
+    BACKEND_MODES = {"t2i", "i2i"}
     DESCRIPTION  = (
         "Text → image on your remote GPU backend (the bundled Cineloom server "
         "or any OpenAI-compatible /v1 endpoint). No local GPU needed. Set the "
