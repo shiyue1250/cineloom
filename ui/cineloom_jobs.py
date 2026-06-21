@@ -88,10 +88,17 @@ def _discovery_tick():
     return 300.0  # every 5 minutes
 
 
+_loaded_from_cache = False
+
+
 def backend_model_items(self, context):
     """EnumProperty items for the in-panel backend-model picker, filtered to the
     current generation type. ``self`` is the Scene. A module reference to the
     returned list is kept to avoid Blender's dynamic-enum GC crash."""
+    global _loaded_from_cache
+    if not _DISCOVERY.get("models") and not _loaded_from_cache:
+        _load_discovery()           # belt-and-suspenders: fill from cache on first draw
+        _loaded_from_cache = True
     type_map = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}
     want = type_map.get(getattr(self, "generatorai_typeselect", "movie"), "")
     items = [("", "(Backend default)", "Let the backend choose the model")]
