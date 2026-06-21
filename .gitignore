@@ -146,3 +146,6 @@ workstation/
 
 # Self-built reference backend — Cineloom is a plugin; the backend is separate
 server/
+
+# Local Claude Code settings
+.claude/
