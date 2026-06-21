@@ -193,21 +193,32 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
         plugin = _reg_get_plugin(_card)
         def _has(sec): return plugin is None or sec in (plugin.UI_SECTIONS or [])
 
-        # --- Model selection at the TOP: choose what to make and which model
-        # first; parameters follow below. ---
+        # --- Channel -> Type -> Model, at the TOP (pick what to make first) ---
         _msel = layout.box().column()
         _msel.use_property_split = True
         _msel.use_property_decorate = False
+        # Channel: the connected backend (configured in Preferences).
         try:
-            _msel.prop(context.scene, "generatorai_typeselect", text="Output")
+            from .cineloom_jobs import discovery_status
+            _st = discovery_status()
+            if _st.get("models"):
+                _msel.label(text="Channel: remote backend (%d models)" % len(_st["models"]), icon="WORLD")
+            else:
+                _msel.label(text="Channel: set the backend URL in Preferences", icon="ERROR")
+        except Exception:
+            pass
+        try:
+            _msel.prop(context.scene, "generatorai_typeselect", text="Type")
         except Exception:
             pass
         _card_attr = {"movie": "movie_model_card", "image": "image_model_card",
                       "audio": "audio_model_card", "text": "text_model_card"}.get(type)
-        if _card_attr:
-            _msel.prop(addon_prefs, _card_attr, text="Model")
+        # The engine/plugin picker is only meaningful with local models shown;
+        # otherwise there is a single Cineloom Remote engine per type, so hide it.
+        if _card_attr and getattr(addon_prefs, "cineloom_show_local_models", False):
+            _msel.prop(addon_prefs, _card_attr, text="Engine")
         try:
-            _msel.prop(context.scene, "cineloom_backend_model", text="Backend Model")
+            _msel.prop(context.scene, "cineloom_backend_model", text="Model")
         except Exception:
             pass
         from ..models.base import InputSpec as _InputSpec

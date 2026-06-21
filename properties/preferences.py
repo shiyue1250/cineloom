@@ -62,7 +62,10 @@ def _filter_models(self, media_type, items):
         out = list(items)
     else:
         remote = [it for it in items if str(it[0]).startswith("cineloom-remote/")]
-        out = remote or list(items)   # never empty (Blender disallows it)
+        # When no remote model bridges this type, show an honest placeholder
+        # rather than falling back to the (unusable) local models.
+        out = remote or [(f"__no_remote_{media_type}__",
+                          "No remote model for this type", "")]
     _ENUM_CACHE[media_type] = out
     return out
 
