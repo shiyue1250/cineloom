@@ -88,6 +88,40 @@ def _discovery_tick():
     return 300.0  # every 5 minutes
 
 
+def refresh_after_channel_change():
+    """Channel switched → drop the old models and re-discover the new backend."""
+    global _loaded_from_cache
+    _DISCOVERY["models"] = []
+    _DISCOVERY["ok"] = None
+    _DISCOVERY["msg"] = "Switching channel…"
+    _loaded_from_cache = True
+    try:
+        _do_discovery()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def channel_items(self, context):
+    chans = getattr(_prefs(), "cineloom_channels", [])
+    out = [(str(i), (ch.name or "Backend %d" % (i + 1)), ch.url) for i, ch in enumerate(chans)]
+    if not out:
+        out = [("__none__", "(add a channel in Preferences)", "")]
+    channel_items._cache = out
+    return out
+
+
+def _chan_get(self):
+    n = len(getattr(_prefs(), "cineloom_channels", []))
+    return max(0, min(getattr(_prefs(), "cineloom_active_channel", 0), n - 1)) if n else 0
+
+
+def _chan_set(self, value):
+    p = _prefs()
+    if getattr(p, "cineloom_active_channel", 0) != value:
+        p.cineloom_active_channel = value
+        refresh_after_channel_change()
+
+
 _loaded_from_cache = False
 
 
@@ -280,6 +314,11 @@ def register_jobs():
         description="Which discovered backend model to use; run Test Connection to populate",
         items=backend_model_items,
     )
+    bpy.types.Scene.cineloom_channel = bpy.props.EnumProperty(
+        name="Channel",
+        description="Active remote backend (manage channels in Preferences)",
+        items=channel_items, get=_chan_get, set=_chan_set,
+    )
     _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_discovery_tick):
         # First run soon after startup (auto-refresh if a URL is set), then hourly-ish.
@@ -292,7 +331,7 @@ def unregister_jobs():
             bpy.app.timers.unregister(_discovery_tick)
     except Exception:  # noqa: BLE001
         pass
-    for prop in ("cineloom_jobs", "cineloom_backend_model"):
+    for prop in ("cineloom_jobs", "cineloom_backend_model", "cineloom_channel"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001

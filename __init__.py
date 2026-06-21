@@ -364,6 +364,16 @@ def register():
         description="A higher number: more camera movement. A lower number: more character movement",
     )
 
+    # Channel classes must register before the preferences class (its
+    # CollectionProperty references CineloomChannel).
+    from .properties.preferences import (
+        CineloomChannel, CINELOOM_OT_channel_add,
+        CINELOOM_OT_channel_remove, CINELOOM_OT_channel_set_active,
+    )
+    for _cc in (CineloomChannel, CINELOOM_OT_channel_add,
+                CINELOOM_OT_channel_remove, CINELOOM_OT_channel_set_active):
+        bpy.utils.register_class(_cc)
+
     for cls in classes:
         bpy.utils.register_class(cls)
 
@@ -1000,6 +1010,16 @@ def unregister():
         pass
     for cls in classes:
         bpy.utils.unregister_class(cls)
+    try:
+        from .properties.preferences import (
+            CineloomChannel, CINELOOM_OT_channel_add,
+            CINELOOM_OT_channel_remove, CINELOOM_OT_channel_set_active,
+        )
+        for _cc in (CINELOOM_OT_channel_set_active, CINELOOM_OT_channel_remove,
+                    CINELOOM_OT_channel_add, CineloomChannel):
+            bpy.utils.unregister_class(_cc)
+    except Exception:
+        pass
     del bpy.types.Scene.generate_movie_prompt
     del bpy.types.Scene.generate_audio_prompt
     del bpy.types.Scene.generate_movie_x

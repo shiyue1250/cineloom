@@ -139,8 +139,85 @@ def _hf_cache_dir_update(self, context):
         os.environ["HF_HUB_CACHE"] = cache_dir
 
 
+def _cl_prefs():
+    return bpy.context.preferences.addons[__package__.rsplit(".", 1)[0]].preferences
+
+
+def active_channel(prefs):
+    """(url, key) for the active channel, or the legacy single fields if no
+    channels are defined (keeps older setups working)."""
+    chans = getattr(prefs, "cineloom_channels", None)
+    if chans and len(chans):
+        i = max(0, min(getattr(prefs, "cineloom_active_channel", 0), len(chans) - 1))
+        ch = chans[i]
+        return (ch.url or "").strip(), (ch.api_key or "").strip()
+    return ((getattr(prefs, "cineloom_remote_url", "") or "").strip(),
+            (getattr(prefs, "cineloom_remote_api_key", "") or "").strip())
+
+
+class CineloomChannel(PropertyGroup):
+    name: StringProperty(name="Name", default="Backend")
+    url: StringProperty(
+        name="URL",
+        description="Backend base URL, e.g. http://host:port (a trailing /v1 is fine)",
+    )
+    api_key: StringProperty(name="API Key", subtype="PASSWORD",
+                            description="Optional, for backends that require auth")
+
+
+class CINELOOM_OT_channel_add(Operator):
+    bl_idname = "cineloom.channel_add"
+    bl_label = "Add Channel"
+    bl_description = "Add a remote backend channel"
+
+    def execute(self, context):
+        prefs = _cl_prefs()
+        ch = prefs.cineloom_channels.add()
+        ch.name = "Backend %d" % len(prefs.cineloom_channels)
+        # Seed the first channel from any legacy single-backend settings.
+        if len(prefs.cineloom_channels) == 1:
+            ch.url = getattr(prefs, "cineloom_remote_url", "") or ""
+            ch.api_key = getattr(prefs, "cineloom_remote_api_key", "") or ""
+        prefs.cineloom_active_channel = len(prefs.cineloom_channels) - 1
+        return {'FINISHED'}
+
+
+class CINELOOM_OT_channel_remove(Operator):
+    bl_idname = "cineloom.channel_remove"
+    bl_label = "Remove Channel"
+    bl_description = "Remove this backend channel"
+    index: IntProperty(default=-1)
+
+    def execute(self, context):
+        prefs = _cl_prefs()
+        i = self.index if self.index >= 0 else prefs.cineloom_active_channel
+        if 0 <= i < len(prefs.cineloom_channels):
+            prefs.cineloom_channels.remove(i)
+        prefs.cineloom_active_channel = max(
+            0, min(prefs.cineloom_active_channel, len(prefs.cineloom_channels) - 1))
+        return {'FINISHED'}
+
+
+class CINELOOM_OT_channel_set_active(Operator):
+    bl_idname = "cineloom.channel_set_active"
+    bl_label = "Use This Channel"
+    bl_description = "Make this the active backend"
+    index: IntProperty(default=0)
+
+    def execute(self, context):
+        _cl_prefs().cineloom_active_channel = self.index
+        try:
+            from ..ui.cineloom_jobs import refresh_after_channel_change
+            refresh_after_channel_change()
+        except Exception:  # noqa: BLE001
+            pass
+        return {'FINISHED'}
+
+
 class GeneratorAddonPreferences(AddonPreferences):
     bl_idname = __package__.rsplit(".", 1)[0]
+    cineloom_channels: bpy.props.CollectionProperty(type=CineloomChannel)
+    cineloom_active_channel: bpy.props.IntProperty(default=0, min=0)
     soundselect: EnumProperty(
         name="Sound",
         items={
@@ -354,10 +431,27 @@ class GeneratorAddonPreferences(AddonPreferences):
 
         # --- Cineloom remote backend ---
         remote_box = layout.box()
-        remote_box.label(text="Remote Backend (Cineloom)", icon="URL")
-        remote_box.prop(self, "cineloom_remote_url")
-        remote_box.prop(self, "cineloom_remote_api_key")
-        remote_box.operator("cineloom.test_connection", icon="LINKED")
+        remote_box.label(text="Remote Backends (Cineloom)", icon="URL")
+        if not len(self.cineloom_channels):
+            # Legacy single backend (still works); offer to switch to channels.
+            remote_box.prop(self, "cineloom_remote_url")
+            remote_box.prop(self, "cineloom_remote_api_key")
+            remote_box.operator("cineloom.channel_add", text="Add Channel", icon="ADD")
+        else:
+            for i, ch in enumerate(self.cineloom_channels):
+                cbox = remote_box.box()
+                hdr = cbox.row(align=True)
+                is_active = (i == self.cineloom_active_channel)
+                op = hdr.operator("cineloom.channel_set_active", text="",
+                                  icon="RADIOBUT_ON" if is_active else "RADIOBUT_OFF", emboss=False)
+                op.index = i
+                hdr.prop(ch, "name", text="")
+                hdr.operator("cineloom.channel_remove", text="", icon="X").index = i
+                cbox.prop(ch, "url")
+                cbox.prop(ch, "api_key")
+            row = remote_box.row(align=True)
+            row.operator("cineloom.channel_add", text="Add Channel", icon="ADD")
+            row.operator("cineloom.test_connection", text="Test Active Channel", icon="LINKED")
         try:
             from ..ui.cineloom_jobs import discovery_status
             st = discovery_status()
@@ -370,11 +464,7 @@ class GeneratorAddonPreferences(AddonPreferences):
             pass
         remote_box.prop(self, "cineloom_show_local_models")
         remote_box.label(
-            text="Pick the model in the Cineloom sidebar panel when you generate.",
-            icon="INFO",
-        )
-        remote_box.label(
-            text="Pick a 'Cineloom Remote · …' model to generate on the backend.",
+            text="Pick the Type and Model in the Cineloom sidebar panel to generate.",
             icon="INFO",
         )
 

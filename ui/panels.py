@@ -197,14 +197,18 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
         _msel = layout.box().column()
         _msel.use_property_split = True
         _msel.use_property_decorate = False
-        # Channel: the connected backend (configured in Preferences).
+        # Channel: pick the active backend (managed in Preferences). With no
+        # channels yet, just show the legacy single-backend status.
         try:
-            from .cineloom_jobs import discovery_status
-            _st = discovery_status()
-            if _st.get("models"):
-                _msel.label(text="Channel: remote backend (%d models)" % len(_st["models"]), icon="WORLD")
+            if len(getattr(addon_prefs, "cineloom_channels", [])):
+                _msel.prop(context.scene, "cineloom_channel", text="Channel")
             else:
-                _msel.label(text="Channel: set the backend URL in Preferences", icon="ERROR")
+                from .cineloom_jobs import discovery_status
+                _st = discovery_status()
+                if _st.get("models"):
+                    _msel.label(text="Channel: remote backend (%d models)" % len(_st["models"]), icon="WORLD")
+                else:
+                    _msel.label(text="Channel: add a backend in Preferences", icon="ERROR")
         except Exception:
             pass
         try:

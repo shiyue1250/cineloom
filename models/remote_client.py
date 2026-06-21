@@ -84,12 +84,18 @@ class RemoteConfig:
         backend (the IC-LoRA control server) via its own preference field.
         The API key is shared. Environment fallbacks let plugins run headless.
         """
-        base = (
-            getattr(prefs, url_attr, "") or ""
-        ).strip() or os.environ.get(env_url, "").strip()
-        key = (
-            getattr(prefs, "cineloom_remote_api_key", "") or ""
-        ).strip() or os.environ.get("CINELOOM_REMOTE_API_KEY", "").strip()
+        base = ""
+        key = ""
+        # Prefer the active channel (multi-backend); fall back to legacy fields/env.
+        try:
+            from ..properties.preferences import active_channel
+            base, key = active_channel(prefs)
+        except Exception:  # noqa: BLE001
+            pass
+        if not base:
+            base = (getattr(prefs, url_attr, "") or "").strip() or os.environ.get(env_url, "").strip()
+        if not key:
+            key = (getattr(prefs, "cineloom_remote_api_key", "") or "").strip() or os.environ.get("CINELOOM_REMOTE_API_KEY", "").strip()
         if not base:
             raise RemoteBackendError(
                 f"{label} is not set. Open the Cineloom add-on preferences and "
