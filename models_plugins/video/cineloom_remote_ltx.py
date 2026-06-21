@@ -81,7 +81,7 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
 
         # A reference video strip → motion/structure control.
         if inputs.video_path:
-            payload["control_type"] = "canny"
+            payload["control_type"] = (getattr(scene, "cineloom_control_type", "") or "canny")
             payload["control_strength"] = _CONTROL_STRENGTH
             return client.generate_control(
                 inputs.video_path, payload, dst_path, phase_fn=_phase, progress_fn=_progress

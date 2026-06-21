@@ -336,6 +336,14 @@ def register_jobs():
         description="Active remote backend (manage channels in Preferences)",
         items=channel_items, get=_chan_get, set=_chan_set,
     )
+    bpy.types.Scene.cineloom_control_type = bpy.props.EnumProperty(
+        name="Control",
+        description="How a reference video drives generation (needs backend support)",
+        items=[("canny", "Canny (edges)", "Follow the reference's edges / structure"),
+               ("depth", "Depth", "Follow the reference's depth"),
+               ("pose", "Pose (OpenPose)", "Follow the reference's body pose")],
+        default="canny",
+    )
     _load_discovery()   # populate the picker from cache immediately
     if not bpy.app.timers.is_registered(_ensure_channel):
         bpy.app.timers.register(_ensure_channel, first_interval=0.3)
@@ -350,7 +358,8 @@ def unregister_jobs():
             bpy.app.timers.unregister(_discovery_tick)
     except Exception:  # noqa: BLE001
         pass
-    for prop in ("cineloom_jobs", "cineloom_backend_model", "cineloom_channel"):
+    for prop in ("cineloom_jobs", "cineloom_backend_model", "cineloom_channel",
+                 "cineloom_control_type"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001

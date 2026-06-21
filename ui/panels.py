@@ -273,6 +273,12 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
             except:
                 pass
 
+            # Motion-control method: shown for the remote Video model when the
+            # input is a strip — a reference video then drives the motion.
+            if (type == "movie" and input == "input_strips" and plugin is not None
+                    and str(getattr(plugin, "MODEL_ID", "")).startswith("cineloom-remote/")):
+                col.prop(context.scene, "cineloom_control_type", text="Control")
+
 
         if type != "text":
             if type != "audio":
