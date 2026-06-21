@@ -49,24 +49,42 @@ from ..utils.helpers import *
 # Dynamic EnumProperty item callbacks — delegates to the plugin registry
 # ---------------------------------------------------------------------------
 
+_ENUM_CACHE = {}
+
+
+def _filter_models(self, media_type, items):
+    """Cineloom default: show only the remote-bridge models — the local
+    Pallaidium models need a local GPU + heavy deps and only mislead bridge
+    users. Power users with local hardware can re-enable them with the
+    'Show local models' preference. A module reference is kept (Blender's
+    dynamic-enum GC requirement)."""
+    if getattr(self, "cineloom_show_local_models", False):
+        out = list(items)
+    else:
+        remote = [it for it in items if str(it[0]).startswith("cineloom-remote/")]
+        out = remote or list(items)   # never empty (Blender disallows it)
+    _ENUM_CACHE[media_type] = out
+    return out
+
+
 def _video_enum_items(self, context):
     from ..models import get_enum_items
-    return get_enum_items("video")
+    return _filter_models(self, "video", get_enum_items("video"))
 
 
 def _image_enum_items(self, context):
     from ..models import get_enum_items
-    return get_enum_items("image")
+    return _filter_models(self, "image", get_enum_items("image"))
 
 
 def _audio_enum_items(self, context):
     from ..models import get_enum_items
-    return get_enum_items("audio")
+    return _filter_models(self, "audio", get_enum_items("audio"))
 
 
 def _text_enum_items(self, context):
     from ..models import get_enum_items
-    return get_enum_items("text")
+    return _filter_models(self, "text", get_enum_items("text"))
 
 
 # Update wrappers: persist the selected MODEL_ID string alongside the enum
@@ -230,6 +248,15 @@ class GeneratorAddonPreferences(AddonPreferences):
         subtype="PASSWORD",
         maxlen=1024,
     )
+    cineloom_show_local_models: BoolProperty(
+        name="Show local models",
+        description=(
+            "Also list the inherited local Pallaidium models in the Model menu. "
+            "These run on a local GPU and need heavy dependencies — off by "
+            "default so the menu shows only the remote-bridge models."
+        ),
+        default=False,
+    )
 
     # --- Async dependency operation state (SKIP_SAVE — reset on restart) ---
     dep_is_running:     BoolProperty(default=False,  options={'SKIP_SAVE'})
@@ -338,6 +365,7 @@ class GeneratorAddonPreferences(AddonPreferences):
                 remote_box.label(text="    • %s%s" % (m["id"], t))
         except Exception:  # noqa: BLE001
             pass
+        remote_box.prop(self, "cineloom_show_local_models")
         remote_box.label(
             text="Pick the model in the Cineloom sidebar panel when you generate.",
             icon="INFO",
