@@ -25,6 +25,16 @@ _ROOT = __package__.rsplit(".", 1)[0]
 # Backend discovery state (kept fresh by a periodic timer once a URL is set).
 _DISCOVERY = {"ok": None, "msg": "Not tested yet", "models": [], "at": 0.0}
 
+# Generation modes the add-on's plugins can actually drive today. Models whose
+# modes don't overlap these are hidden from the picker (they'd need dedicated
+# input handling — i2v/flf/storyboard/relay/render/asr — to produce a result).
+_SUPPORTED_MODES = {
+    "video": {"t2v"},
+    "image": {"t2i", "i2i"},
+    "audio": {"tts"},
+    "text": set(),
+}
+
 
 def discovery_status():
     return _DISCOVERY
@@ -152,13 +162,25 @@ def backend_model_items(self, context):
         _loaded_from_cache = True
     type_map = {"movie": "video", "image": "image", "audio": "audio", "text": "text"}
     want = type_map.get(getattr(self, "generatorai_typeselect", "movie"), "")
+    # Only modes the add-on's plugins can actually drive — others (i2v, flf,
+    # storyboard, relay, render, asr) need dedicated input handling, so hide them
+    # rather than list models that would not produce a result.
+    supported = _SUPPORTED_MODES.get(want, set())
     items = [("", "(Backend default)", "Let the backend choose the model")]
     for m in _DISCOVERY.get("models", []):
         t = m.get("type", "")
-        if t == want or t == "":
-            mid = m.get("id", "")
-            if mid:
-                items.append((mid, mid, "type: %s" % (t or "?")))
+        if t != want and t != "":
+            continue
+        if not supported:
+            continue                       # no plugin drives this type at all
+        modes = set(m.get("modes") or [])
+        # Keep when there is no mode info, or the modes overlap what we support.
+        if modes and not (modes & supported):
+            continue
+        mid = m.get("id", "")
+        if mid:
+            label = "%s (%s)" % (mid, ", ".join(sorted(modes))) if modes else mid
+            items.append((mid, mid, label))
     backend_model_items._cache = items
     return items
 
