@@ -52,6 +52,8 @@ Any OpenAI-SDK-compatible backend
 5. Open the **Video Editing** workspace → press **N** for the sidebar → the
    **Cineloom** tab appears.
 
+![Install from Disk in Blender Add-ons preferences](docs/images/install-en.png)
+
 **Connect a backend:**
 
 In **`Edit ▸ Preferences ▸ Add-ons ▸ Cineloom`**, set the **Remote Backend URL**

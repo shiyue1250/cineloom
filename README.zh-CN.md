@@ -45,6 +45,8 @@ Blender（Windows / macOS / Linux，你的机器）
 4. 确认插件列表里 **Cineloom** 已勾选启用。
 5. 打开 **Video Editing** 工作区 → 按 **N** 调出侧栏 → 出现 **Cineloom** 标签页。
 
+![在 Blender 插件偏好里“从磁盘安装”](docs/images/install-zh.png)
+
 **连接后端：**
 
 在 **`Edit ▸ Preferences ▸ Add-ons ▸ Cineloom`** 里填 **Remote Backend URL**
