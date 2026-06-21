@@ -1,6 +1,24 @@
 import bpy
 from bpy_extras.io_utils import ExportHelper
 import ctypes
+
+
+_HAS_TEXTBOX = None
+
+
+def _prompt_field(col, data, prop, placeholder):
+    """A multi-line, drag-resizable text box on Blender 5.2+ (UILayout.textbox);
+    a single-line field on older Blender (4.x/5.1) where textbox doesn't exist."""
+    global _HAS_TEXTBOX
+    if _HAS_TEXTBOX is None:
+        try:
+            _HAS_TEXTBOX = "textbox" in [f.identifier for f in bpy.types.UILayout.bl_rna.functions]
+        except Exception:  # noqa: BLE001
+            _HAS_TEXTBOX = False
+    if _HAS_TEXTBOX:
+        col.textbox(data, prop, placeholder=placeholder)
+    else:
+        col.prop(data, prop, text="", placeholder=placeholder)
 import random
 import site
 import platform
@@ -332,14 +350,9 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 col.use_property_decorate = False
                 if type != "audio":
                     col.prop(context.scene, "generatorai_styles", text="")
-                col.prop(context.scene, "generate_movie_prompt", text="", placeholder='Positive prompt...')
+                _prompt_field(col, context.scene, "generate_movie_prompt", 'Positive prompt...')
                 if _has(UISection.NEG_PROMPT):
-                    col.prop(
-                        context.scene,
-                        "generate_movie_negative_prompt",
-                        text="",
-                        placeholder='Negative prompt...',
-                    )
+                    _prompt_field(col, context.scene, "generate_movie_negative_prompt", 'Negative prompt...')
                     
             layout = self.layout
             layout = layout.column(align=True)
@@ -392,7 +405,7 @@ class SEQUENCER_PT_pallaidium_panel(Panel):  # UI
                 col.prop(context.scene, "music_bpm", text="BPM")
                 col.prop(context.scene, "music_key_scale", text="Key")
                 col.prop(context.scene, "music_time_signature", text="Time Sig.")
-                col.prop(context.scene, "music_lyrics", text="", placeholder="Lyrics")
+                _prompt_field(col, context.scene, "music_lyrics", "Lyrics")
 
             if type == "audio" and plugin is not None:
                 plugin.draw_custom_ui(col, context)
