@@ -50,13 +50,25 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
     supports_img2img     = False
 
     def draw_post_seed_ui(self, col, context):
-        modes = _modes(context.scene)
+        scene = context.scene
+        modes = _modes(scene)
         if "flf" in modes:
             box = col.box()
             box.label(text="Frames to interpolate:", icon="IMAGE_DATA")
-            box.prop(context.scene, "cineloom_flf_first")
-            box.prop(context.scene, "cineloom_flf_last")
+            box.prop(scene, "cineloom_flf_first")
+            box.prop(scene, "cineloom_flf_last")
             return
+        # Motion control: a reference video drives the motion/structure.
+        if "control" in modes:
+            box = col.box()
+            box.label(text="Motion control (optional):", icon="CON_TRACKTO")
+            box.prop(scene, "cineloom_ctrl_video")
+            box.prop(scene, "cineloom_control_type", text="Type")
+        # Image-to-video: a source image (single clip).
+        if "i2v" in modes:
+            box = col.box()
+            box.label(text="Image → video (optional):", icon="IMAGE_DATA")
+            box.prop(scene, "cineloom_src_image")
         # Storyboard-capable models (i2v variants / storyboard) → a shot list.
         # Leave it empty to generate a single clip instead.
         if modes & {"storyboard", "i2v"}:
@@ -168,13 +180,25 @@ class CineloomRemoteVideoPlugin(ModelPlugin):
                 base["last_frame_file_id"] = client.upload_file(os.path.basename(last), fh.read(), purpose="reference")
             return client.generate_video(base, dst_path, phase_fn=_phase, progress_fn=_progress)
 
-        # A reference video strip → motion / structure control.
-        if inputs.video_path:
+        import os
+        import bpy
+
+        # Motion control: a reference video (file picker, or the selected strip).
+        ctrl = bpy.path.abspath(getattr(scene, "cineloom_ctrl_video", "") or "")
+        if not os.path.isfile(ctrl):
+            ctrl = inputs.video_path or ""
+        if "control" in modes and ctrl and os.path.isfile(ctrl):
             base["control_type"] = (getattr(scene, "cineloom_control_type", "") or "canny")
             base["control_strength"] = _CONTROL_STRENGTH
-            return client.generate_control(inputs.video_path, base, dst_path, phase_fn=_phase, progress_fn=_progress)
+            return client.generate_control(ctrl, base, dst_path, phase_fn=_phase, progress_fn=_progress)
 
-        # A source image → image2video (uploaded as a reference file).
+        # Image → video: a source image (file picker, or the selected image strip).
+        src = bpy.path.abspath(getattr(scene, "cineloom_src_image", "") or "")
+        if "i2v" in modes and os.path.isfile(src):
+            _phase("Uploading source image")
+            with open(src, "rb") as fh:
+                base["reference_file_id"] = client.upload_file(os.path.basename(src), fh.read(), purpose="reference")
+            return client.generate_video(base, dst_path, phase_fn=_phase, progress_fn=_progress)
         if inputs.image is not None:
             from io import BytesIO
             _phase("Uploading source image")

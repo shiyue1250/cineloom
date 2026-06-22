@@ -461,6 +461,12 @@ def register_jobs():
         name="First Frame", subtype="FILE_PATH", description="Image for the first frame")
     bpy.types.Scene.cineloom_flf_last = bpy.props.StringProperty(
         name="Last Frame", subtype="FILE_PATH", description="Image for the last frame")
+    bpy.types.Scene.cineloom_ctrl_video = bpy.props.StringProperty(
+        name="Reference video", subtype="FILE_PATH",
+        description="Reference video whose motion/structure drives the generation")
+    bpy.types.Scene.cineloom_src_image = bpy.props.StringProperty(
+        name="Source image", subtype="FILE_PATH",
+        description="Source image for image-to-video")
     bpy.types.Scene.cineloom_sb_size = bpy.props.EnumProperty(
         name="Aspect", description="Storyboard output aspect ratio",
         items=[("16:9", "16:9", ""), ("9:16", "9:16", ""), ("1:1", "1:1", ""),
@@ -484,7 +490,8 @@ def unregister_jobs():
         pass
     for prop in ("cineloom_jobs", "cineloom_shots", "cineloom_backend_model",
                  "cineloom_channel", "cineloom_control_type",
-                 "cineloom_flf_first", "cineloom_flf_last", "cineloom_sb_size"):
+                 "cineloom_flf_first", "cineloom_flf_last", "cineloom_sb_size",
+                 "cineloom_ctrl_video", "cineloom_src_image"):
         try:
             delattr(bpy.types.Scene, prop)
         except Exception:  # noqa: BLE001
